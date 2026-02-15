@@ -71,9 +71,10 @@ export default function Layout({ children }: { children: ReactNode }) {
   }, [searchInput, location.pathname, setSearchParams])
 
   const savedSearch = location.pathname !== '/' ? (typeof sessionStorage !== 'undefined' ? sessionStorage.getItem('applebazaar_search') ?? '' : '') : ''
+  const q = searchParams.get('q')
   const shopTo =
     location.pathname === '/'
-      ? (searchParams.get('q') ? `/?q=${encodeURIComponent(searchParams.get('q'))}` : '/')
+      ? (q ? `/?q=${encodeURIComponent(q)}` : '/')
       : (savedSearch ? `/?q=${encodeURIComponent(savedSearch)}` : '/')
 
   const handleSearchSubmit = (e: React.FormEvent<HTMLFormElement>) => {

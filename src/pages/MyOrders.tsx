@@ -3,7 +3,6 @@ import { Link } from 'react-router-dom'
 import { collection, doc, query, getDocs, getDoc, orderBy } from 'firebase/firestore'
 import { db } from '../firebase'
 import { useAuth } from '../contexts/AuthContext'
-import { formatCedi } from '../utils/currency'
 
 type OrderItem = { id: string; name: string; price: number; quantity: number; imageUrl?: string }
 type Order = {
