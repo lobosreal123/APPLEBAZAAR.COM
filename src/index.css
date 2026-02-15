@@ -88,6 +88,9 @@ input, textarea {
 
 /* Animated header logo */
 .app-logo {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
   font-weight: 700;
   font-size: 1.35rem;
   background: linear-gradient(90deg, #0d9488, #059669, #0d9488);
@@ -96,6 +99,15 @@ input, textarea {
   background-clip: text;
   -webkit-text-fill-color: transparent;
   animation: logo-shimmer 4s ease-in-out infinite;
+  text-decoration: none;
+}
+
+.app-logo-img {
+  width: auto;
+  height: 36px;
+  display: block;
+  flex-shrink: 0;
+  vertical-align: middle;
 }
 
 .app-logo:hover {

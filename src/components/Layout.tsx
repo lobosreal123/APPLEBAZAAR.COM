@@ -92,7 +92,8 @@ export default function Layout({ children }: { children: ReactNode }) {
       <header className="app-header">
         <div className="app-header-inner">
           <Link to={shopTo} className="app-logo">
-            Applebazaar
+            <img src="/favicon.png" alt="" className="app-logo-img" />
+            <span>APPLE BAZAAR</span>
           </Link>
           <form className="app-search-form" role="search" onSubmit={handleSearchSubmit}>
             <input
