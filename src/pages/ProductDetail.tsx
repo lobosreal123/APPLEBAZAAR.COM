@@ -1,0 +1,174 @@
+import { useState, useEffect } from 'react'
+import { useParams } from 'react-router-dom'
+import { doc, getDoc } from 'firebase/firestore'
+import { db } from '../firebase'
+import { useCart } from '../contexts/CartContext'
+import { getPosInventoryPath, parseProductId } from '../config'
+import { getProductImageUrl, type Product } from '../components/ProductCard'
+import { getImageUrls } from '../utils/productMapping'
+import { formatCedi } from '../utils/currency'
+
+function mapInventoryToProduct(id: string, data: Record<string, unknown>): Product {
+  const imageUrls = getImageUrls(data)
+  return {
+    id,
+    name: ((data.name as string) || (data.model as string) || '').trim() || '',
+    description: (data.description as string) ?? '',
+    price: typeof data.price === 'number' ? data.price : Number(data.price) ?? 0,
+    imageUrl: imageUrls[0] || undefined,
+    imageUrls,
+    stock: typeof data.stock === 'number' ? data.stock : Number(data.stock) ?? 0,
+    createdAt: data.createdAt as { seconds: number } | undefined,
+    category: (data.category as string) ?? undefined,
+    isAccessory: data.isAccessory === true,
+    isCustomItem: data.isCustomItem === true,
+  }
+}
+
+export default function ProductDetail() {
+  const { id: encodedId } = useParams<{ id: string }>()
+  const [product, setProduct] = useState<Product | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [selectedIndex, setSelectedIndex] = useState(0)
+  const [failedIndices, setFailedIndices] = useState<Set<number>>(new Set())
+  const { addItem } = useCart()
+
+  useEffect(() => {
+    if (!encodedId) {
+      setLoading(false)
+      return
+    }
+    let cancelled = false
+    const parsed = parseProductId(encodedId)
+    if (parsed) {
+      const { ownerId, storeId, docId } = parsed
+      getDoc(doc(db, 'users', ownerId, 'stores', storeId, 'inventory', docId))
+        .then((snap) => {
+          if (cancelled) return
+          if (snap.exists()) {
+            setProduct(mapInventoryToProduct(encodedId, snap.data()))
+          } else {
+            setError('Product not found')
+          }
+        })
+        .catch((err) => {
+          if (!cancelled) setError(err instanceof Error ? err.message : 'Failed to load')
+        })
+        .finally(() => {
+          if (!cancelled) setLoading(false)
+        })
+    } else {
+      const path = getPosInventoryPath()
+      if (!path.length) {
+        setError('POS store not configured.')
+        setLoading(false)
+        return
+      }
+      const [users, ownerId, stores, storeId, inventory] = path
+      getDoc(doc(db, users, ownerId, stores, storeId, inventory, encodedId))
+        .then((snap) => {
+          if (cancelled) return
+          if (snap.exists()) {
+            setProduct(mapInventoryToProduct(snap.id, snap.data()))
+          } else {
+            setError('Product not found')
+          }
+        })
+        .catch((err) => {
+          if (!cancelled) setError(err instanceof Error ? err.message : 'Failed to load')
+        })
+        .finally(() => {
+          if (!cancelled) setLoading(false)
+        })
+    }
+    return () => {
+      cancelled = true
+    }
+  }, [encodedId])
+
+  useEffect(() => {
+    setSelectedIndex(0)
+    setFailedIndices(new Set())
+  }, [product?.id])
+
+  if (loading) return <p style={{ padding: '2rem', color: 'var(--text-muted)' }}>Loading…</p>
+  if (error || !product) {
+    return <p style={{ padding: '2rem', color: 'var(--error)' }}>{error ?? 'Not found'}</p>
+  }
+
+  const inStock = product.stock >= 1
+
+  const handleAddToCart = () => {
+    if (!inStock) return
+    addItem({
+      productId: product.id,
+      name: product.name,
+      price: product.price,
+      imageUrl: getProductImageUrl(product),
+      maxStock: product.stock,
+      quantity: 1,
+    })
+  }
+
+  const urls = product.imageUrls?.length ? product.imageUrls : (product.imageUrl ? [product.imageUrl] : [])
+  const mainUrl = urls[selectedIndex]
+  const mainFailed = mainUrl && failedIndices.has(selectedIndex)
+
+  return (
+    <div className="product-detail">
+      <div className="product-detail-gallery">
+        <div className="product-detail-image">
+          {mainUrl && !mainFailed ? (
+            <img
+              key={mainUrl}
+              src={mainUrl}
+              alt={product.name || 'Product'}
+              onError={() => setFailedIndices((prev) => new Set(prev).add(selectedIndex))}
+            />
+          ) : (
+            <span style={{ color: 'var(--text-muted)' }}>No image</span>
+          )}
+        </div>
+        {urls.length > 1 && (
+          <div className="product-detail-thumbnails">
+            {urls.map((url, i) => {
+              if (failedIndices.has(i)) return null
+              return (
+                <button
+                  key={`${i}-${url.slice(0, 40)}`}
+                  type="button"
+                  className={`product-detail-thumb ${selectedIndex === i ? 'active' : ''}`}
+                  onClick={() => setSelectedIndex(i)}
+                  aria-label={`View image ${i + 1}`}
+                >
+                  <img src={url} alt="" onError={() => setFailedIndices((prev) => new Set(prev).add(i))} />
+                </button>
+              )
+            })}
+          </div>
+        )}
+      </div>
+      <div className="product-detail-info">
+        <h1>{product.name}</h1>
+        <p className="product-detail-price">{formatCedi(product.price)}</p>
+        {product.description && <p className="product-detail-desc">{product.description}</p>}
+        <p className="product-detail-stock">
+          {inStock ? (
+            <span style={{ color: 'var(--success)' }}>In stock</span>
+          ) : (
+            <span style={{ color: 'var(--error)' }}>Out of stock</span>
+          )}
+        </p>
+        <button
+          type="button"
+          className="btn-primary"
+          onClick={handleAddToCart}
+          disabled={!inStock}
+        >
+          {inStock ? 'Add to cart' : 'Out of stock'}
+        </button>
+      </div>
+    </div>
+  )
+}
