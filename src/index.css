@@ -193,6 +193,12 @@ input, textarea {
   padding: 1.5rem;
 }
 
+@media (max-width: 640px) {
+  .app-main {
+    padding: 0.75rem;
+  }
+}
+
 /* Hero – cosmic orange background */
 .hero {
   text-align: center;
@@ -295,6 +301,28 @@ input, textarea {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
   gap: 1.5rem;
+}
+
+/* Mobile: at least 3 items per row, compact cards */
+@media (max-width: 640px) {
+  .product-grid {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 0.5rem;
+  }
+  .product-card-body {
+    padding: 0.5rem;
+  }
+  .product-card-title {
+    font-size: 0.75rem;
+    line-height: 1.25;
+    -webkit-line-clamp: 2;
+  }
+  .product-card-price {
+    font-size: 0.85rem;
+  }
+  .product-card-meta {
+    font-size: 0.7rem;
+  }
 }
 
 /* Product card – glassmorphism */
