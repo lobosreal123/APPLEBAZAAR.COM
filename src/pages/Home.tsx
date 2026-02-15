@@ -11,8 +11,8 @@ import {
 import { filterProductsBySearch } from '../utils/search'
 
 const STORAGE_KEY = 'applebazaar_category'
-const HERO_LINE_1 = 'Quality devices, trusted prices'
-const HERO_LINE_2 = 'Shop New and pre-owned electronics with confidence.'
+const HERO_LINE_1 = 'Quality devices, parts & accessories at fair prices.'
+const HERO_LINE_2 = 'Shop new and pre-owned electronics and parts with confidence.'
 const TYPEWRITER_MS = 55
 
 function getStoredCategory(): CategoryTab {
