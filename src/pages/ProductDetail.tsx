@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { useParams } from 'react-router-dom'
+import { useParams, Link } from 'react-router-dom'
 import { doc, getDoc } from 'firebase/firestore'
 import { db } from '../firebase'
 import { useCart } from '../contexts/CartContext'
@@ -96,9 +96,21 @@ export default function ProductDetail() {
     setFailedIndices(new Set())
   }, [product?.id])
 
-  if (loading) return <p style={{ padding: '2rem', color: 'var(--text-muted)' }}>Loading…</p>
+  if (loading) {
+    return (
+      <div style={{ padding: '2rem' }}>
+        <Link to="/" className="product-detail-back" style={{ marginBottom: '1rem', display: 'inline-block' }}>← Back</Link>
+        <p style={{ color: 'var(--text-muted)' }}>Loading…</p>
+      </div>
+    )
+  }
   if (error || !product) {
-    return <p style={{ padding: '2rem', color: 'var(--error)' }}>{error ?? 'Not found'}</p>
+    return (
+      <div style={{ padding: '2rem' }}>
+        <Link to="/" className="product-detail-back" style={{ marginBottom: '1rem', display: 'inline-block' }}>← Back</Link>
+        <p style={{ color: 'var(--error)' }}>{error ?? 'Not found'}</p>
+      </div>
+    )
   }
 
   const inStock = product.stock >= 1
@@ -121,6 +133,9 @@ export default function ProductDetail() {
 
   return (
     <div className="product-detail">
+      <Link to="/" className="product-detail-back" aria-label="Back to shop">
+        ← Back
+      </Link>
       <div className="product-detail-gallery">
         <div className="product-detail-image">
           {mainUrl && !mainFailed ? (
