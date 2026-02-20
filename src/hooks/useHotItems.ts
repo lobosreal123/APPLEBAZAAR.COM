@@ -5,7 +5,7 @@ import { db } from '../firebase'
 const HOT_ITEMS_DOC = 'publicStorewebsite'
 const HOT_ITEMS_COLLECTION = 'publicStore'
 
-/** Fetches hot/featured item IDs from Firestore (max 6). Public read. */
+/** Fetches hot/featured item IDs from Firestore (max 10). Public read. */
 export function useHotItems(): { hotItemIds: string[]; loading: boolean } {
   const [hotItemIds, setHotItemIds] = useState<string[]>([])
   const [loading, setLoading] = useState(true)
@@ -16,7 +16,7 @@ export function useHotItems(): { hotItemIds: string[]; loading: boolean } {
       .then((snap) => {
         if (cancelled) return
         const ids = (snap.data()?.hotItemIds as string[] | undefined) ?? []
-        setHotItemIds(Array.isArray(ids) ? ids.slice(0, 6) : [])
+        setHotItemIds(Array.isArray(ids) ? ids.slice(0, 10) : [])
       })
       .catch(() => {
         if (!cancelled) setHotItemIds([])

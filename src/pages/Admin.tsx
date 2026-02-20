@@ -108,7 +108,7 @@ export default function Admin() {
     getDoc(doc(db, 'publicStore', 'publicStorewebsite'))
       .then((snap) => {
         const ids = (snap.data()?.hotItemIds as string[] | undefined) ?? []
-        setHotItemIds(Array.isArray(ids) ? ids.slice(0, 6) : [])
+        setHotItemIds(Array.isArray(ids) ? ids.slice(0, 10) : [])
       })
       .catch(() => setHotItemIds([]))
       .finally(() => setHotItemsLoading(false))
@@ -118,7 +118,7 @@ export default function Admin() {
     setHotItemIds((prev) => {
       const idx = prev.indexOf(productId)
       if (idx >= 0) return prev.filter((id) => id !== productId)
-      if (prev.length >= 6) return prev
+      if (prev.length >= 10) return prev
       return [...prev, productId]
     })
   }
@@ -589,16 +589,16 @@ export default function Admin() {
 
         {activeTab === TAB_HOT && canEditHotItems && (
           <section>
-            <h2 style={{ fontSize: '1.1rem', marginBottom: '1rem' }}>Hot items (6 featured on homepage)</h2>
+            <h2 style={{ fontSize: '1.1rem', marginBottom: '1rem' }}>Hot items (10 featured on homepage)</h2>
             <p style={{ fontSize: '0.9rem', color: 'var(--text-muted)', marginBottom: '1rem' }}>
-              Select up to 6 products to feature in the Hot items grid. These appear at the top of the homepage.
+              Select up to 10 products to feature in the Hot items grid. These appear at the top of the homepage.
             </p>
             {hotItemsLoading ? (
               <p style={{ color: 'var(--text-muted)' }}>Loading…</p>
             ) : (
               <>
                 <p style={{ marginBottom: '0.75rem', fontSize: '0.9rem' }}>
-                  Selected: {hotItemIds.length} / 6
+                  Selected: {hotItemIds.length} / 10
                 </p>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '0.75rem', marginBottom: '1rem' }}>
                   {products.filter((p) => p.stock >= 1).map((p) => {

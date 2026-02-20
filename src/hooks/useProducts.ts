@@ -8,6 +8,8 @@ import type { Product } from '../components/ProductCard'
 /** Map POS inventory doc to website Product. id can be doc id (single store) or composite ownerId|storeId|docId. */
 function mapInventoryToProduct(id: string, data: Record<string, unknown>): Product {
   const imageUrls = getImageUrls(data)
+  const color = ((data.color as string) || (data.colour as string) || '').trim() || undefined
+  const storage = ((data.storage as string) || (data.storageCapacity as string) || '').trim() || undefined
   return {
     id,
     name: ((data.name as string) || (data.model as string) || '').trim() || '',
@@ -20,6 +22,8 @@ function mapInventoryToProduct(id: string, data: Record<string, unknown>): Produ
     category: (data.category as string) ?? undefined,
     isAccessory: data.isAccessory === true,
     isCustomItem: data.isCustomItem === true,
+    color: color || undefined,
+    storage: storage || undefined,
   }
 }
 

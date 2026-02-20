@@ -10,6 +10,8 @@ import { formatCedi } from '../utils/currency'
 
 function mapInventoryToProduct(id: string, data: Record<string, unknown>): Product {
   const imageUrls = getImageUrls(data)
+  const color = ((data.color as string) || (data.colour as string) || '').trim() || undefined
+  const storage = ((data.storage as string) || (data.storageCapacity as string) || '').trim() || undefined
   return {
     id,
     name: ((data.name as string) || (data.model as string) || '').trim() || '',
@@ -22,6 +24,8 @@ function mapInventoryToProduct(id: string, data: Record<string, unknown>): Produ
     category: (data.category as string) ?? undefined,
     isAccessory: data.isAccessory === true,
     isCustomItem: data.isCustomItem === true,
+    color: color || undefined,
+    storage: storage || undefined,
   }
 }
 
@@ -151,6 +155,11 @@ export default function ProductDetail() {
       </div>
       <div className="product-detail-info">
         <h1>{product.name}</h1>
+        {(product.color || product.storage) && (
+          <p className="product-detail-specs">
+            {[product.color, product.storage].filter(Boolean).join(' · ')}
+          </p>
+        )}
         <p className="product-detail-price">{formatCedi(product.price)}</p>
         {product.description && <p className="product-detail-desc">{product.description}</p>}
         <p className="product-detail-stock">

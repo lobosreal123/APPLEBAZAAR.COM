@@ -17,6 +17,10 @@ export type Product = {
   category?: string
   isAccessory?: boolean
   isCustomItem?: boolean
+  /** Color (e.g. Black, Silver). From inventory color/storage. */
+  color?: string
+  /** Storage capacity (e.g. 64GB, 128GB). From inventory storage/storageCapacity. */
+  storage?: string
 }
 
 /** First displayable image URL (from imageUrls or legacy imageUrl). */
@@ -52,6 +56,11 @@ export default function ProductCard({ product }: { product: Product }) {
       </div>
       <div className="product-card-body">
         <h3 className="product-card-title">{product.name || 'Product'}</h3>
+        {(product.color || product.storage) && (
+          <p className="product-card-specs">
+            {[product.color, product.storage].filter(Boolean).join(' · ')}
+          </p>
+        )}
         <p className="product-card-price">{formatCedi(product.price)}</p>
         <p className={`product-card-meta ${inStock ? '' : 'out'}`}>
           {inStock ? 'In stock' : 'Out of stock'}
