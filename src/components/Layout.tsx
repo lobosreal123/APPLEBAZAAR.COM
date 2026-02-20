@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { Link, useNavigate, useLocation, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { useCart } from '../contexts/CartContext'
+import { useAdmin } from '../hooks/useAdmin'
 import type { ReactNode } from 'react'
 
 const SEARCH_DEBOUNCE_MS = 280
@@ -11,6 +12,7 @@ const WHATSAPP_QR_URL = `https://api.qrserver.com/v1/create-qr-code/?size=200x20
 
 export default function Layout({ children }: { children: ReactNode }) {
   const { user, loading, signOut } = useAuth()
+  const { isAdmin } = useAdmin()
   const { totalItems } = useCart()
   const navigate = useNavigate()
   const location = useLocation()
@@ -111,6 +113,9 @@ export default function Layout({ children }: { children: ReactNode }) {
             <Link to={shopTo}>Shop</Link>
             {user && (
               <Link to="/my-orders">My orders</Link>
+            )}
+            {user && isAdmin && (
+              <Link to="/admin">Admin</Link>
             )}
             <button
               type="button"

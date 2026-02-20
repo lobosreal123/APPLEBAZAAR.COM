@@ -1,6 +1,7 @@
-import { useState, useCallback, useEffect, useRef } from 'react'
+import { useState, useCallback } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { useProducts } from '../hooks/useProducts'
+import { useHotItems } from '../hooks/useHotItems'
 import ProductCard from '../components/ProductCard'
 import {
   CATEGORY_TABS,
@@ -11,9 +12,6 @@ import {
 import { filterProductsBySearch } from '../utils/search'
 
 const STORAGE_KEY = 'applebazaar_category'
-const HERO_LINE_1 = 'Quality devices, parts & accessories at fair prices.'
-const HERO_LINE_2 = 'Shop new and pre-owned electronics and parts with confidence.'
-const TYPEWRITER_MS = 55
 
 function getStoredCategory(): CategoryTab {
   try {
@@ -29,54 +27,8 @@ export default function Home() {
   const [searchParams] = useSearchParams()
   const searchQuery = searchParams.get('q') ?? ''
   const { products, loading, error } = useProducts()
+  const { hotItemIds } = useHotItems()
   const [activeTab, setActiveTab] = useState<CategoryTab>(() => getStoredCategory())
-  const [heroLine1, setHeroLine1] = useState('')
-  const [heroLine2, setHeroLine2] = useState('')
-  const typewriterStarted = useRef(false)
-
-  const typewriterIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
-  const typewriterTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-
-  useEffect(() => {
-    if (loading || products.length === 0) return
-    let i1 = 0
-    let i2 = 0
-    const PAUSE_BEFORE_REPEAT_MS = 2200
-
-    const runCycle = () => {
-      if (typewriterStarted.current) return
-      typewriterStarted.current = true
-      const tick = () => {
-        if (i1 < HERO_LINE_1.length) {
-          setHeroLine1(HERO_LINE_1.slice(0, i1 + 1))
-          i1 += 1
-        } else if (i2 < HERO_LINE_2.length) {
-          setHeroLine2(HERO_LINE_2.slice(0, i2 + 1))
-          i2 += 1
-        } else {
-          if (typewriterIntervalRef.current) {
-            clearInterval(typewriterIntervalRef.current)
-            typewriterIntervalRef.current = null
-          }
-          typewriterStarted.current = false
-          typewriterTimeoutRef.current = setTimeout(() => {
-            typewriterTimeoutRef.current = null
-            i1 = 0
-            i2 = 0
-            setHeroLine1('')
-            setHeroLine2('')
-            runCycle()
-          }, PAUSE_BEFORE_REPEAT_MS)
-        }
-      }
-      typewriterIntervalRef.current = setInterval(tick, TYPEWRITER_MS)
-    }
-    runCycle()
-    return () => {
-      if (typewriterIntervalRef.current) clearInterval(typewriterIntervalRef.current)
-      if (typewriterTimeoutRef.current) clearTimeout(typewriterTimeoutRef.current)
-    }
-  }, [loading, products.length])
 
   const selectTab = useCallback((id: CategoryTab) => {
     setActiveTab(id)
@@ -90,6 +42,13 @@ export default function Home() {
   const inStockOnly = products.filter(inStock)
   const byCategory = filterInventoryByCategory(inStockOnly, activeTab)
   const filtered = filterProductsBySearch(byCategory, searchQuery)
+
+  const hotItems = hotItemIds.length > 0
+    ? hotItemIds
+        .map((id) => inStockOnly.find((p) => p.id === id))
+        .filter((p): p is NonNullable<typeof p> => p != null)
+        .slice(0, 6)
+    : inStockOnly.slice(0, 6)
 
   if (loading) {
     return (
@@ -117,16 +76,16 @@ export default function Home() {
 
   return (
     <>
-      <section className="hero">
-        <h1 className="hero-title-animated">
-          {heroLine1}
-          {heroLine1.length < HERO_LINE_1.length && <span className="hero-cursor" aria-hidden>|</span>}
-        </h1>
-        <p className="hero-subtitle-animated">
-          {heroLine2}
-          {heroLine2.length > 0 && heroLine2.length < HERO_LINE_2.length && <span className="hero-cursor" aria-hidden>|</span>}
-        </p>
-      </section>
+      {hotItems.length > 0 && (
+        <section style={{ marginBottom: '2rem' }}>
+          <h2 className="section-title">Hot items</h2>
+          <div className="product-grid hot-items-grid">
+            {hotItems.map((p) => (
+              <ProductCard key={p.id} product={p} />
+            ))}
+          </div>
+        </section>
+      )}
 
       <h2 className="section-title">Shop inventory</h2>
       <div className="category-tabs" role="tablist">

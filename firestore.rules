@@ -318,5 +318,32 @@ service cloud.firestore {
       // This is safe because transactions ensure atomic increments
       allow read, write: if true;
     }
+    
+    // ============================================
+    // INVENTORY TRANSFERS (POS: shop-to-shop with admin confirmation)
+    // ============================================
+    // One admin sends a transfer; another admin (by uid or email) confirms and receives.
+    // Schema: fromUid, fromStoreId, toUid, toEmail?, toStoreId, items[{inventoryDocId,name,quantity}],
+    //         status:'pending'|'accepted'|'rejected', createdAt, respondedAt?, respondedBy?
+    match /inventoryTransfers/{transferId} {
+      // Create: only admin, and must be sender (fromUid == self), status must be pending
+      allow create: if isAdmin() &&
+        request.resource.data.fromUid == request.auth.uid &&
+        request.resource.data.status == 'pending';
+      // Read/list: sender or receiver (by uid or email)
+      allow read, list: if isAdmin() && (
+        resource.data.fromUid == request.auth.uid ||
+        resource.data.toUid == request.auth.uid ||
+        (resource.data.toEmail != null && request.auth.token.email != null && resource.data.toEmail == request.auth.token.email)
+      );
+      // Update: only receiver can update; only pending transfers; only status, respondedAt, respondedBy
+      allow update: if isAdmin() &&
+        resource.data.status == 'pending' &&
+        (resource.data.toUid == request.auth.uid ||
+         (resource.data.toEmail != null && request.auth.token.email != null && resource.data.toEmail == request.auth.token.email)) &&
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'respondedAt', 'respondedBy']) &&
+        request.resource.data.status in ['accepted', 'rejected'];
+      allow delete: if false;
+    }
   }
 }

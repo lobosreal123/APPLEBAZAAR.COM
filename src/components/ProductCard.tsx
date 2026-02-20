@@ -13,7 +13,7 @@ export type Product = {
   imageUrls: string[]
   stock: number
   createdAt?: { seconds: number }
-  /** POS category fields for filtering (All, Devices, Accessories, Screens, Custom). */
+  /** POS category fields for filtering (All, Phones, Accessories, Screens, Custom). */
   category?: string
   isAccessory?: boolean
   isCustomItem?: boolean

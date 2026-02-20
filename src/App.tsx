@@ -11,7 +11,9 @@ import Checkout from './pages/Checkout'
 import OrderConfirmation from './pages/OrderConfirmation'
 import MyOrders from './pages/MyOrders'
 import ViewOrder from './pages/ViewOrder'
+import Admin from './pages/Admin'
 import PrivateRoute from './components/PrivateRoute'
+import AdminRoute from './components/AdminRoute'
 
 export default function App() {
   return (
@@ -48,6 +50,14 @@ export default function App() {
                   <PrivateRoute>
                     <ViewOrder />
                   </PrivateRoute>
+                }
+              />
+              <Route
+                path="/admin"
+                element={
+                  <AdminRoute>
+                    <Admin />
+                  </AdminRoute>
                 }
               />
             </Routes>
