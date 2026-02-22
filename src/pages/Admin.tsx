@@ -19,6 +19,7 @@ import { db } from '../firebase'
 import { useAuth } from '../contexts/AuthContext'
 import { useProducts } from '../hooks/useProducts'
 import { getImageUrls, isValidImageUrl } from '../utils/productMapping'
+import ImageLightbox from '../components/ImageLightbox'
 
 type TransferItem = {
   inventoryDocId: string
@@ -76,6 +77,7 @@ export default function Admin() {
   const [hotItemIds, setHotItemIds] = useState<string[]>([])
   const [hotItemsLoading, setHotItemsLoading] = useState(false)
   const [hotItemsSaving, setHotItemsSaving] = useState(false)
+  const [lightboxImage, setLightboxImage] = useState<string | null>(null)
 
   const canEditHotItems = user?.email?.toLowerCase() === HOT_ITEMS_ADMIN_EMAIL.toLowerCase()
 
@@ -420,7 +422,15 @@ export default function Admin() {
                           }}
                         >
                           {item.imageUrl && isValidImageUrl(item.imageUrl) && (
-                            <img src={item.imageUrl} alt="" style={{ width: 32, height: 32, objectFit: 'cover', borderRadius: 4 }} />
+                            <button
+                              type="button"
+                              className="image-lightbox-trigger"
+                              onClick={() => setLightboxImage(item.imageUrl!)}
+                              style={{ padding: 0, border: 'none', background: 'none' }}
+                              aria-label="View image full screen"
+                            >
+                              <img src={item.imageUrl} alt="" style={{ width: 32, height: 32, objectFit: 'cover', borderRadius: 4 }} />
+                            </button>
                           )}
                           <span>{item.name} × {item.quantity}</span>
                         </li>
@@ -490,7 +500,15 @@ export default function Admin() {
                           }}
                         >
                           {item.imageUrl && isValidImageUrl(item.imageUrl) && (
-                            <img src={item.imageUrl} alt="" style={{ width: 32, height: 32, objectFit: 'cover', borderRadius: 4 }} />
+                            <button
+                              type="button"
+                              className="image-lightbox-trigger"
+                              onClick={() => setLightboxImage(item.imageUrl!)}
+                              style={{ padding: 0, border: 'none', background: 'none' }}
+                              aria-label="View image full screen"
+                            >
+                              <img src={item.imageUrl} alt="" style={{ width: 32, height: 32, objectFit: 'cover', borderRadius: 4 }} />
+                            </button>
                           )}
                           <span>{item.name} × {item.quantity}</span>
                         </li>
@@ -563,7 +581,15 @@ export default function Admin() {
                         }}
                       >
                         {item.imageUrl && isValidImageUrl(item.imageUrl) && (
-                          <img src={item.imageUrl} alt="" style={{ width: 40, height: 40, objectFit: 'cover', borderRadius: 4 }} />
+                          <button
+                            type="button"
+                            className="image-lightbox-trigger"
+                            onClick={() => setLightboxImage(item.imageUrl!)}
+                            style={{ padding: 0, border: 'none', background: 'none' }}
+                            aria-label="View image full screen"
+                          >
+                            <img src={item.imageUrl} alt="" style={{ width: 40, height: 40, objectFit: 'cover', borderRadius: 4 }} />
+                          </button>
                         )}
                         <span style={{ flex: 1, fontSize: '0.9rem' }}>{item.name}</span>
                         <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>Stock: {item.stock}</span>
@@ -620,8 +646,19 @@ export default function Admin() {
                           gap: '0.5rem',
                         }}
                       >
-                        {p.imageUrl && isValidImageUrl(p.imageUrl) && (
+{p.imageUrl && isValidImageUrl(p.imageUrl) && (
+                        <button
+                          type="button"
+                          className="image-lightbox-trigger"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            setLightboxImage(p.imageUrl!)
+                          }}
+                          style={{ padding: 0, border: 'none', background: 'none', flexShrink: 0 }}
+                          aria-label="View image full screen"
+                        >
                           <img src={p.imageUrl} alt="" style={{ width: 48, height: 48, objectFit: 'cover', borderRadius: 4 }} />
+                        </button>
                         )}
                         <span style={{ flex: 1, fontSize: '0.9rem', overflow: 'hidden', textOverflow: 'ellipsis' }}>{p.name}</span>
                         {selected && <span style={{ color: 'var(--accent)', fontWeight: 600 }}>✓</span>}
@@ -652,6 +689,10 @@ export default function Admin() {
           </section>
         )}
       </section>
+
+      {lightboxImage && (
+        <ImageLightbox imageUrls={[lightboxImage]} onClose={() => setLightboxImage(null)} />
+      )}
     </div>
   )
 }

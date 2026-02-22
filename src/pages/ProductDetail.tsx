@@ -7,6 +7,7 @@ import { getPosInventoryPath, parseProductId } from '../config'
 import { getProductImageUrl, type Product } from '../components/ProductCard'
 import { getImageUrls, isValidImageUrl } from '../utils/productMapping'
 import { formatCedi } from '../utils/currency'
+import ImageLightbox from '../components/ImageLightbox'
 
 function mapInventoryToProduct(id: string, data: Record<string, unknown>): Product {
   const imageUrls = getImageUrls(data)
@@ -36,6 +37,7 @@ export default function ProductDetail() {
   const [error, setError] = useState<string | null>(null)
   const [selectedIndex, setSelectedIndex] = useState(0)
   const [failedIndices, setFailedIndices] = useState<Set<number>>(new Set())
+  const [lightboxOpen, setLightboxOpen] = useState(false)
   const [storeNames, setStoreNames] = useState<string[]>([])
   const { addItem } = useCart()
   const navigate = useNavigate()
@@ -190,12 +192,20 @@ export default function ProductDetail() {
       <div className="product-detail-gallery">
         <div className="product-detail-image">
           {mainUrl && !mainFailed ? (
-            <img
-              key={mainUrl}
-              src={mainUrl}
-              alt={product.name || 'Product'}
-              onError={() => setFailedIndices((prev) => new Set(prev).add(selectedIndex))}
-            />
+            <button
+              type="button"
+              className="image-lightbox-trigger"
+              onClick={() => setLightboxOpen(true)}
+              style={{ padding: 0, border: 'none', background: 'none', cursor: 'zoom-in', width: '100%', display: 'block' }}
+              aria-label="View image full screen"
+            >
+              <img
+                key={mainUrl}
+                src={mainUrl}
+                alt={product.name || 'Product'}
+                onError={() => setFailedIndices((prev) => new Set(prev).add(selectedIndex))}
+              />
+            </button>
           ) : (
             <span style={{ color: 'var(--text-muted)' }}>No image</span>
           )}
@@ -209,8 +219,11 @@ export default function ProductDetail() {
                   key={`${i}-${url.slice(0, 40)}`}
                   type="button"
                   className={`product-detail-thumb ${selectedIndex === i ? 'active' : ''}`}
-                  onClick={() => setSelectedIndex(i)}
-                  aria-label={`View image ${i + 1}`}
+                  onClick={() => {
+                    setSelectedIndex(i)
+                    setLightboxOpen(true)
+                  }}
+                  aria-label={`View image ${i + 1} full screen`}
                 >
                   <img src={url} alt="" onError={() => setFailedIndices((prev) => new Set(prev).add(i))} />
                 </button>
@@ -244,6 +257,14 @@ export default function ProductDetail() {
           {inStock ? 'Add to cart' : 'Out of stock'}
         </button>
       </div>
+
+      {lightboxOpen && urls.length > 0 && (
+        <ImageLightbox
+          imageUrls={urls}
+          initialIndex={selectedIndex}
+          onClose={() => setLightboxOpen(false)}
+        />
+      )}
     </div>
   )
 }
