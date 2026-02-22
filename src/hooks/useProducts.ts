@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { collection, getDocs } from 'firebase/firestore'
+import { collection, getDocs, query, where } from 'firebase/firestore'
 import { db } from '../firebase'
 import { getPosStoreConfigs, toCompositeId } from '../config'
 import { getImageUrls } from '../utils/productMapping'
@@ -42,8 +42,9 @@ export function useProducts() {
       return
     }
 
-    const fetchAll = configs.map(({ ownerId, storeId }) =>
-      getDocs(collection(db, 'users', ownerId, 'stores', storeId, 'inventory')).then((snap) =>
+    const fetchAll = configs.map(({ ownerId, storeId }) => {
+      const coll = collection(db, 'users', ownerId, 'stores', storeId, 'inventory')
+      return getDocs(query(coll, where('stock', '>=', 1))).then((snap) =>
         snap.docs.map((d) => ({
           ownerId,
           storeId,
@@ -51,22 +52,44 @@ export function useProducts() {
           data: d.data(),
         }))
       )
-    )
+    })
 
     Promise.all(fetchAll)
       .then((results) => {
         if (cancelled) return
         const useCompositeId = configs.length > 1
-        const list: Product[] = []
+        const raw: Product[] = []
         for (const docs of results) {
           for (const { ownerId, storeId, docId, data } of docs) {
             const id = useCompositeId ? toCompositeId(ownerId, storeId, docId) : docId
-            list.push(mapInventoryToProduct(id, data))
+            const p = mapInventoryToProduct(id, data)
+            p.storeLocations = [{ ownerId, storeId }]
+            raw.push(p)
           }
         }
+        const dedupeKey = (p: Product) => `${(p.name || '').toLowerCase()}|${p.price}|${p.color ?? ''}|${p.storage ?? ''}`
+        const byKey = new Map<string, Product>()
+        for (const p of raw) {
+          const key = dedupeKey(p)
+          const existing = byKey.get(key)
+          if (existing) {
+            existing.stock += p.stock
+            const locs = existing.storeLocations ?? []
+            const loc = p.storeLocations![0]
+            const seen = new Set(locs.map((l) => `${l.ownerId}|${l.storeId}`))
+            if (!seen.has(`${loc.ownerId}|${loc.storeId}`)) locs.push(loc)
+            if (p.imageUrls?.length && !existing.imageUrls?.length) {
+              existing.imageUrls = p.imageUrls
+              existing.imageUrl = p.imageUrl
+            }
+          } else {
+            byKey.set(key, { ...p })
+          }
+        }
+        const list = Array.from(byKey.values())
         if (import.meta.env.DEV) {
           const withImage = list.filter((p) => p.imageUrls?.length)
-          console.log('[useProducts] Loaded', list.length, 'items from', configs.length, 'store(s),', withImage.length, 'with image(s)')
+          console.log('[useProducts] Loaded', raw.length, 'raw →', list.length, 'deduped from', configs.length, 'store(s),', withImage.length, 'with image(s)')
         }
         setProducts(list)
       })

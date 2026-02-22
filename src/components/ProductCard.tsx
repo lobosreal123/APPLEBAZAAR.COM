@@ -22,6 +22,8 @@ export type Product = {
   color?: string
   /** Storage capacity (e.g. 64GB, 128GB). From inventory storage/storageCapacity. */
   storage?: string
+  /** Store locations where this item exists (for deduped multi-store products). */
+  storeLocations?: { ownerId: string; storeId: string }[]
 }
 
 /** First displayable image URL (from imageUrls or legacy imageUrl). Returns undefined for invalid URLs. */
@@ -45,7 +47,12 @@ export default function ProductCard({ product }: { product: Product }) {
   }
 
   return (
-    <Link to={`/product/${product.id}`} className="product-card" onClick={saveScrollAndNavigate}>
+    <Link
+      to={`/product/${product.id}`}
+      className="product-card"
+      onClick={saveScrollAndNavigate}
+      state={product.storeLocations?.length ? { storeLocations: product.storeLocations } : undefined}
+    >
       <div className="product-card-image">
         {showImage ? (
           <img

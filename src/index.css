@@ -597,6 +597,20 @@ textarea {
   color: var(--accent);
 }
 
+.product-detail-store {
+  flex-basis: 100%;
+  margin: 0 0 0.5rem;
+  font-family: 'DM Serif Display', Georgia, serif;
+  font-size: 1.1rem;
+  font-weight: 400;
+  letter-spacing: 0.02em;
+  background: linear-gradient(180deg, #fdba74 0%, #f97316 40%, #ea580c 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  filter: drop-shadow(0 0 8px rgba(249, 115, 22, 0.5)) drop-shadow(0 2px 4px rgba(234, 88, 12, 0.3));
+}
+
 .product-detail-image {
   aspect-ratio: 1;
   background: rgba(255, 255, 255, 0.6);

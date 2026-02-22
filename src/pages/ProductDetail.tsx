@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
+import { useParams, useNavigate, useLocation } from 'react-router-dom'
 import { doc, getDoc } from 'firebase/firestore'
 import { db } from '../firebase'
 import { useCart } from '../contexts/CartContext'
@@ -36,8 +36,11 @@ export default function ProductDetail() {
   const [error, setError] = useState<string | null>(null)
   const [selectedIndex, setSelectedIndex] = useState(0)
   const [failedIndices, setFailedIndices] = useState<Set<number>>(new Set())
+  const [storeNames, setStoreNames] = useState<string[]>([])
   const { addItem } = useCart()
   const navigate = useNavigate()
+  const location = useLocation()
+  const storeLocationsFromState = (location.state as { storeLocations?: { ownerId: string; storeId: string }[] })?.storeLocations
 
   useEffect(() => {
     if (!encodedId) {
@@ -48,7 +51,11 @@ export default function ProductDetail() {
     const parsed = parseProductId(encodedId)
     if (parsed) {
       const { ownerId, storeId, docId } = parsed
-      getDoc(doc(db, 'users', ownerId, 'stores', storeId, 'inventory', docId))
+      setStoreNames([])
+      const invPromise = getDoc(doc(db, 'users', ownerId, 'stores', storeId, 'inventory', docId))
+      const locsToFetch = storeLocationsFromState ?? [{ ownerId, storeId }]
+      const uniqueOwnerIds = [...new Set(locsToFetch.map((l) => l.ownerId))]
+      invPromise
         .then((snap) => {
           if (cancelled) return
           if (snap.exists()) {
@@ -63,6 +70,18 @@ export default function ProductDetail() {
         .finally(() => {
           if (!cancelled) setLoading(false)
         })
+      Promise.all(uniqueOwnerIds.map((uid) => getDoc(doc(db, 'users', uid))))
+        .then((snaps) => {
+          if (!cancelled) {
+            const names = snaps
+              .filter((s) => s.exists())
+              .map((s) => (s.data()?.storeName as string) || '')
+              .filter(Boolean)
+            const unique = [...new Set(names)]
+            setStoreNames(unique)
+          }
+        })
+        .catch(() => { /* ignore */ })
     } else {
       const path = getPosInventoryPath()
       if (!path.length) {
@@ -71,7 +90,11 @@ export default function ProductDetail() {
         return
       }
       const [users, ownerId, stores, storeId, inventory] = path
-      getDoc(doc(db, users, ownerId, stores, storeId, inventory, encodedId))
+      setStoreNames([])
+      const invPromise = getDoc(doc(db, users, ownerId, stores, storeId, inventory, encodedId))
+      const locsToFetch = storeLocationsFromState ?? [{ ownerId, storeId }]
+      const uniqueOwnerIds = [...new Set(locsToFetch.map((l) => l.ownerId))]
+      invPromise
         .then((snap) => {
           if (cancelled) return
           if (snap.exists()) {
@@ -86,11 +109,23 @@ export default function ProductDetail() {
         .finally(() => {
           if (!cancelled) setLoading(false)
         })
+      Promise.all(uniqueOwnerIds.map((uid) => getDoc(doc(db, users, uid))))
+        .then((snaps) => {
+          if (!cancelled) {
+            const names = snaps
+              .filter((s) => s.exists())
+              .map((s) => (s.data()?.storeName as string) || '')
+              .filter(Boolean)
+            const unique = [...new Set(names)]
+            setStoreNames(unique)
+          }
+        })
+        .catch(() => { /* ignore */ })
     }
     return () => {
       cancelled = true
     }
-  }, [encodedId])
+  }, [encodedId, storeLocationsFromState])
 
   useEffect(() => {
     setSelectedIndex(0)
@@ -147,6 +182,11 @@ export default function ProductDetail() {
       >
         ← Back
       </button>
+      {inStock && storeNames.length > 0 && (
+        <p className="product-detail-store">
+          SHOP: {storeNames.length === 1 ? storeNames[0] : storeNames.join(' · ')}
+        </p>
+      )}
       <div className="product-detail-gallery">
         <div className="product-detail-image">
           {mainUrl && !mainFailed ? (
