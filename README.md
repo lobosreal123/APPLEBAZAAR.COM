@@ -15,6 +15,7 @@ Storefront that uses the **same Firestore inventory as your POS**: `users/{userI
      - **Multiple owners and/or stores:** `VITE_POS_STORES` = comma-separated `ownerId:storeId` pairs (e.g. `uid1:store1,uid2:store2,uid1:store2`).
      - **One owner, multiple stores:** `VITE_POS_OWNER_UID` + `VITE_POS_STORE_IDS` = comma-separated store IDs.
      - **Single store:** `VITE_POS_OWNER_UID` + `VITE_POS_STORE_ID`.
+   - **Google Analytics (optional):** `VITE_GA_MEASUREMENT_ID` = your GA4 measurement ID (e.g. `G-XXXXXXXXXX`) from GA4 Admin → Data Streams.
 
 3. **Firestore rules**
    - Deploy `firestore.rules` so the website can read the store(s) inventory.

@@ -2,6 +2,7 @@ import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import { AuthProvider } from './contexts/AuthContext'
 import { CartProvider } from './contexts/CartContext'
 import Layout from './components/Layout'
+import GoogleAnalytics from './components/GoogleAnalytics'
 import Home from './pages/Home'
 import ProductDetail from './pages/ProductDetail'
 import Cart from './pages/Cart'
@@ -18,6 +19,7 @@ import AdminRoute from './components/AdminRoute'
 export default function App() {
   return (
     <BrowserRouter>
+      <GoogleAnalytics />
       <AuthProvider>
         <CartProvider>
           <Layout>
