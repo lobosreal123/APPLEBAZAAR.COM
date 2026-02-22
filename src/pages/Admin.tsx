@@ -629,14 +629,24 @@ export default function Admin() {
                     )
                   })}
                 </div>
-                <button
-                  type="button"
-                  className="btn-primary"
-                  onClick={saveHotItems}
-                  disabled={hotItemsSaving}
-                >
-                  {hotItemsSaving ? 'Saving…' : 'Save hot items'}
-                </button>
+                <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                  <button
+                    type="button"
+                    className="btn-outline"
+                    onClick={() => setHotItemIds([])}
+                    disabled={hotItemIds.length === 0 || hotItemsSaving}
+                  >
+                    Clear all
+                  </button>
+                  <button
+                    type="button"
+                    className="btn-primary"
+                    onClick={saveHotItems}
+                    disabled={hotItemsSaving}
+                  >
+                    {hotItemsSaving ? 'Saving…' : 'Save hot items'}
+                  </button>
+                </div>
               </>
             )}
           </section>

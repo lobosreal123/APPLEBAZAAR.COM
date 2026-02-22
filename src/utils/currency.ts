@@ -1,4 +1,4 @@
-/** Format amount in Ghana cedis (GHS). */
+/** Format amount in Ghana cedis (GHS). No decimals. */
 export function formatCedi(amount: number): string {
-  return `GH₵${amount.toFixed(2)}`
+  return `GH₵${Math.round(amount)}`
 }

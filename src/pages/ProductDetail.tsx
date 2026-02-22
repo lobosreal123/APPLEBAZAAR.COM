@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { useParams, Link } from 'react-router-dom'
+import { useParams, useNavigate } from 'react-router-dom'
 import { doc, getDoc } from 'firebase/firestore'
 import { db } from '../firebase'
 import { useCart } from '../contexts/CartContext'
@@ -37,6 +37,7 @@ export default function ProductDetail() {
   const [selectedIndex, setSelectedIndex] = useState(0)
   const [failedIndices, setFailedIndices] = useState<Set<number>>(new Set())
   const { addItem } = useCart()
+  const navigate = useNavigate()
 
   useEffect(() => {
     if (!encodedId) {
@@ -99,7 +100,9 @@ export default function ProductDetail() {
   if (loading) {
     return (
       <div style={{ padding: '2rem' }}>
-        <Link to="/" className="product-detail-back" style={{ marginBottom: '1rem', display: 'inline-block' }}>← Back</Link>
+        <button type="button" className="product-detail-back" onClick={() => navigate(-1)} style={{ marginBottom: '1rem', display: 'inline-block', background: 'none', border: 'none' }}>
+          ← Back
+        </button>
         <p style={{ color: 'var(--text-muted)' }}>Loading…</p>
       </div>
     )
@@ -107,7 +110,9 @@ export default function ProductDetail() {
   if (error || !product) {
     return (
       <div style={{ padding: '2rem' }}>
-        <Link to="/" className="product-detail-back" style={{ marginBottom: '1rem', display: 'inline-block' }}>← Back</Link>
+        <button type="button" className="product-detail-back" onClick={() => navigate(-1)} style={{ marginBottom: '1rem', display: 'inline-block', background: 'none', border: 'none' }}>
+          ← Back
+        </button>
         <p style={{ color: 'var(--error)' }}>{error ?? 'Not found'}</p>
       </div>
     )
@@ -133,9 +138,14 @@ export default function ProductDetail() {
 
   return (
     <div className="product-detail">
-      <Link to="/" className="product-detail-back" aria-label="Back to shop">
+      <button
+        type="button"
+        className="product-detail-back"
+        onClick={() => navigate(-1)}
+        aria-label="Back to shop"
+      >
         ← Back
-      </Link>
+      </button>
       <div className="product-detail-gallery">
         <div className="product-detail-image">
           {mainUrl && !mainFailed ? (

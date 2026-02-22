@@ -583,10 +583,14 @@ textarea {
   display: inline-flex;
   align-items: center;
   color: var(--text-muted);
-  text-decoration: none;
   font-size: 0.9rem;
   margin-bottom: 0.25rem;
   transition: color 0.15s;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  font-family: inherit;
 }
 
 .product-detail-back:hover {

@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect, useLayoutEffect, useRef } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { useProducts } from '../hooks/useProducts'
 import { useHotItems } from '../hooks/useHotItems'
@@ -29,6 +29,29 @@ export default function Home() {
   const { products, loading, error } = useProducts()
   const { hotItemIds } = useHotItems()
   const [activeTab, setActiveTab] = useState<CategoryTab>(() => getStoredCategory())
+
+  const pendingScrollY = useRef<number | null>(null)
+
+  useEffect(() => {
+    try {
+      const y = sessionStorage.getItem('applebazaar_returnScrollY')
+      if (y !== null) {
+        sessionStorage.removeItem('applebazaar_returnScrollY')
+        const py = parseInt(y, 10)
+        if (!isNaN(py)) pendingScrollY.current = py
+      }
+    } catch {
+      /* ignore */
+    }
+  }, [])
+
+  useLayoutEffect(() => {
+    if (!loading && pendingScrollY.current !== null) {
+      const y = pendingScrollY.current
+      pendingScrollY.current = null
+      window.scrollTo(0, y)
+    }
+  }, [loading])
 
   const selectTab = useCallback((id: CategoryTab) => {
     setActiveTab(id)

@@ -35,8 +35,16 @@ export default function ProductCard({ product }: { product: Product }) {
   const src = getProductImageUrl(product)
   const showImage = src && !imgError
 
+  const saveScrollAndNavigate = () => {
+    try {
+      sessionStorage.setItem('applebazaar_returnScrollY', String(window.scrollY))
+    } catch {
+      /* ignore */
+    }
+  }
+
   return (
-    <Link to={`/product/${product.id}`} className="product-card">
+    <Link to={`/product/${product.id}`} className="product-card" onClick={saveScrollAndNavigate}>
       <div className="product-card-image">
         {showImage ? (
           <img
