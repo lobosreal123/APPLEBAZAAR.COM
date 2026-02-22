@@ -1,5 +1,5 @@
 /**
- * Category filtering to match POS tabs: All, Phones, Accessories, Screens, Parts (custom items).
+ * Category filtering to match POS tabs: All, Devices, Accessories, Screens, Parts (custom items).
  * Uses category (string), isAccessory (boolean), isCustomItem (boolean) from inventory docs.
  */
 
@@ -7,7 +7,7 @@ export type CategoryTab = 'all' | 'devices' | 'accessories' | 'screens' | 'custo
 
 export const CATEGORY_TABS: { id: CategoryTab; label: string }[] = [
   { id: 'all', label: 'ALL' },
-  { id: 'devices', label: 'PHONES' },
+  { id: 'devices', label: 'DEVICES' },
   { id: 'accessories', label: 'ACCESSORIES' },
   { id: 'screens', label: 'SCREENS' },
   { id: 'custom', label: 'PARTS' },
