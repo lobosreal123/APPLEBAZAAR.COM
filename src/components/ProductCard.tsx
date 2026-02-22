@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { formatCedi } from '../utils/currency'
+import { isValidImageUrl } from '../utils/productMapping'
 
 export type Product = {
   id: string
@@ -23,10 +24,10 @@ export type Product = {
   storage?: string
 }
 
-/** First displayable image URL (from imageUrls or legacy imageUrl). */
+/** First displayable image URL (from imageUrls or legacy imageUrl). Returns undefined for invalid URLs. */
 export function getProductImageUrl(product: Product): string | undefined {
-  if (product.imageUrls?.length) return product.imageUrls[0]
-  return product.imageUrl
+  const url = product.imageUrls?.length ? product.imageUrls[0] : product.imageUrl
+  return url && isValidImageUrl(url) ? url : undefined
 }
 
 export default function ProductCard({ product }: { product: Product }) {

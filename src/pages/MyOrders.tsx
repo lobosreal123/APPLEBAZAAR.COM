@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
+import { isValidImageUrl } from '../utils/productMapping'
 import { collection, doc, query, getDocs, getDoc, orderBy } from 'firebase/firestore'
 import { db } from '../firebase'
 import { useAuth } from '../contexts/AuthContext'
@@ -157,9 +158,9 @@ export default function MyOrders() {
                 <span>{formatDate(order.createdAt)} · {formatTotal(order)}</span>
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginTop: '0.5rem', flexWrap: 'wrap' }}>
-                {order.items.filter((i) => i.imageUrl).length > 0 ? (
+                {order.items.filter((i) => i.imageUrl && isValidImageUrl(i.imageUrl)).length > 0 ? (
                   <div style={{ display: 'flex', gap: 4 }}>
-                    {order.items.filter((i) => i.imageUrl).slice(0, 4).map((i, idx) => (
+                    {order.items.filter((i) => i.imageUrl && isValidImageUrl(i.imageUrl)).slice(0, 4).map((i, idx) => (
                       <img
                         key={`${i.id}-${idx}`}
                         src={i.imageUrl}

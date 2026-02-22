@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom'
 import { useCart } from '../contexts/CartContext'
 import { useAuth } from '../contexts/AuthContext'
 import { formatCedi } from '../utils/currency'
+import { isValidImageUrl } from '../utils/productMapping'
 
 
 export default function Cart() {
@@ -35,7 +36,7 @@ export default function Cart() {
             {items.map((item) => (
               <tr key={item.productId}>
                 <td>
-                  {item.imageUrl && (
+                  {item.imageUrl && isValidImageUrl(item.imageUrl) && (
                     <img
                       src={item.imageUrl}
                       alt=""

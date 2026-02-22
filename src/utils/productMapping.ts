@@ -5,10 +5,12 @@
  */
 const MAX_IMAGES = 10
 
-/** True if the string looks like a valid image URL (http/https). Filters out product IDs or other non-URLs. */
-function isValidImageUrl(s: string): boolean {
+/** True if the string looks like a valid image URL (http/https). Filters out product IDs (ownerId|storeId|docId) or other non-URLs. */
+export function isValidImageUrl(s: string): boolean {
   const trimmed = s.trim()
-  return trimmed.length > 0 && (trimmed.startsWith('http://') || trimmed.startsWith('https://'))
+  if (trimmed.length === 0) return false
+  if (trimmed.includes('|')) return false // product ID format, not a URL
+  return trimmed.startsWith('http://') || trimmed.startsWith('https://')
 }
 
 /** Normalize to array of image URLs (capped at 10). Reads imageUrls array or single imageUrl/imageURL. */

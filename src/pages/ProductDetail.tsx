@@ -5,7 +5,7 @@ import { db } from '../firebase'
 import { useCart } from '../contexts/CartContext'
 import { getPosInventoryPath, parseProductId } from '../config'
 import { getProductImageUrl, type Product } from '../components/ProductCard'
-import { getImageUrls } from '../utils/productMapping'
+import { getImageUrls, isValidImageUrl } from '../utils/productMapping'
 import { formatCedi } from '../utils/currency'
 
 function mapInventoryToProduct(id: string, data: Record<string, unknown>): Product {
@@ -132,7 +132,8 @@ export default function ProductDetail() {
     })
   }
 
-  const urls = product.imageUrls?.length ? product.imageUrls : (product.imageUrl ? [product.imageUrl] : [])
+  const raw = product.imageUrls?.length ? product.imageUrls : (product.imageUrl ? [product.imageUrl] : [])
+  const urls = raw.filter((u): u is string => typeof u === 'string' && isValidImageUrl(u))
   const mainUrl = urls[selectedIndex]
   const mainFailed = mainUrl && failedIndices.has(selectedIndex)
 

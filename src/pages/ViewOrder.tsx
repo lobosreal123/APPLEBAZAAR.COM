@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Link, useParams } from 'react-router-dom'
+import { isValidImageUrl } from '../utils/productMapping'
 import { doc, getDoc } from 'firebase/firestore'
 import { db } from '../firebase'
 import { useAuth } from '../contexts/AuthContext'
@@ -128,7 +129,7 @@ export default function ViewOrder() {
             }}
           >
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', minWidth: 0 }}>
-              {item.imageUrl ? (
+              {item.imageUrl && isValidImageUrl(item.imageUrl) ? (
                 <img
                   src={item.imageUrl}
                   alt=""

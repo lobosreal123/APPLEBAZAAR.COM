@@ -18,7 +18,7 @@ import {
 import { db } from '../firebase'
 import { useAuth } from '../contexts/AuthContext'
 import { useProducts } from '../hooks/useProducts'
-import { getImageUrls } from '../utils/productMapping'
+import { getImageUrls, isValidImageUrl } from '../utils/productMapping'
 
 type TransferItem = {
   inventoryDocId: string
@@ -419,7 +419,7 @@ export default function Admin() {
                             fontSize: '0.875rem',
                           }}
                         >
-                          {item.imageUrl && (
+                          {item.imageUrl && isValidImageUrl(item.imageUrl) && (
                             <img src={item.imageUrl} alt="" style={{ width: 32, height: 32, objectFit: 'cover', borderRadius: 4 }} />
                           )}
                           <span>{item.name} × {item.quantity}</span>
@@ -489,7 +489,7 @@ export default function Admin() {
                             fontSize: '0.875rem',
                           }}
                         >
-                          {item.imageUrl && (
+                          {item.imageUrl && isValidImageUrl(item.imageUrl) && (
                             <img src={item.imageUrl} alt="" style={{ width: 32, height: 32, objectFit: 'cover', borderRadius: 4 }} />
                           )}
                           <span>{item.name} × {item.quantity}</span>
@@ -562,7 +562,7 @@ export default function Admin() {
                           borderRadius: 6,
                         }}
                       >
-                        {item.imageUrl && (
+                        {item.imageUrl && isValidImageUrl(item.imageUrl) && (
                           <img src={item.imageUrl} alt="" style={{ width: 40, height: 40, objectFit: 'cover', borderRadius: 4 }} />
                         )}
                         <span style={{ flex: 1, fontSize: '0.9rem' }}>{item.name}</span>
@@ -620,7 +620,7 @@ export default function Admin() {
                           gap: '0.5rem',
                         }}
                       >
-                        {p.imageUrl && (
+                        {p.imageUrl && isValidImageUrl(p.imageUrl) && (
                           <img src={p.imageUrl} alt="" style={{ width: 48, height: 48, objectFit: 'cover', borderRadius: 4 }} />
                         )}
                         <span style={{ flex: 1, fontSize: '0.9rem', overflow: 'hidden', textOverflow: 'ellipsis' }}>{p.name}</span>
