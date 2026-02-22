@@ -101,7 +101,7 @@ export default function Home() {
     <>
       {hotItems.length > 0 && (
         <section style={{ marginBottom: '2rem' }}>
-          <h2 className="section-title hot-items-title">Hot items</h2>
+          <h2 className="section-title hot-items-title"><span aria-hidden>🔥</span> <span className="hot-items-text">Hot items</span></h2>
           <div className="product-grid hot-items-grid">
             {hotItems.map((p) => (
               <ProductCard key={p.id} product={p} />
