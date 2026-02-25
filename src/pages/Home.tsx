@@ -26,18 +26,6 @@ function getStoredCategory(): CategoryTab {
   return 'all'
 }
 
-function getStoredSub(mainTab: Exclude<CategoryTab, 'all'>): string | null {
-  try {
-    const key = SUB_STORAGE_PREFIX + mainTab
-    const s = sessionStorage.getItem(key)
-    const subs = SUB_CATEGORIES[mainTab]
-    if (s && subs?.some((sub) => sub.id === s)) return s
-  } catch {
-    /* ignore */
-  }
-  return null
-}
-
 export default function Home() {
   const [searchParams] = useSearchParams()
   const searchQuery = searchParams.get('q') ?? ''
