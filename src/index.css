@@ -286,12 +286,73 @@ textarea {
   margin: 0 0 1.25rem;
 }
 
-/* Category tabs */
+/* Category + sub-category selector wrap */
+.shop-selector-wrap {
+  padding: 1rem;
+  margin-bottom: 1.25rem;
+  border-radius: var(--radius);
+}
+
 .category-tabs {
   display: flex;
   flex-wrap: wrap;
   gap: 0.5rem;
-  margin-bottom: 1.25rem;
+  margin-bottom: 0.75rem;
+}
+
+.shop-selector-wrap .category-tabs:last-child {
+  margin-bottom: 0;
+}
+
+/* Sub-categories: liquid bubble style */
+.sub-category-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  padding-left: 0.25rem;
+}
+
+.tab-button-sub {
+  font-family: 'Nunito', var(--sans);
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  padding: 0.35rem 0.7rem;
+  border: 2px solid transparent;
+  border-radius: 9999px;
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease, color 0.2s ease, background 0.2s ease, border-color 0.2s ease;
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.85) 0%, rgba(255, 255, 255, 0.6) 100%);
+  color: var(--text-muted);
+  box-shadow:
+    0 2px 8px rgba(0, 0, 0, 0.06),
+    inset 0 1px 0 rgba(255, 255, 255, 0.8);
+}
+
+.tab-button-sub:hover {
+  transform: translateY(-1px) scale(1.02);
+  box-shadow:
+    0 4px 14px rgba(249, 115, 22, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.9);
+  color: var(--text);
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.95) 0%, rgba(254, 243, 235, 0.85) 100%);
+}
+
+.tab-button-sub.active {
+  color: var(--text-heading);
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.95) 0%, rgba(254, 249, 235, 0.9) 100%);
+  border-color: #eab308;
+  box-shadow:
+    0 2px 10px rgba(234, 179, 8, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.9);
+}
+
+.tab-button-sub.active:hover {
+  transform: translateY(-1px) scale(1.02);
+  border-color: #ca8a04;
+  box-shadow:
+    0 4px 14px rgba(234, 179, 8, 0.35),
+    inset 0 1px 0 rgba(255, 255, 255, 0.9);
 }
 
 .tab-button {
@@ -743,41 +804,74 @@ textarea {
   border-bottom: 1px solid var(--border);
 }
 
-/* Support popup */
+/* Support popup (orange modal surrounding) */
 .support-popup-overlay {
   position: fixed;
   inset: 0;
   z-index: 1000;
-  background: rgba(0, 0, 0, 0.5);
+  background: rgba(249, 115, 22, 0.12);
+  backdrop-filter: blur(4px);
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 1rem;
+  padding: 0.75rem;
 }
 
 .support-popup {
   background: var(--glass-bg);
   backdrop-filter: blur(var(--blur));
-  border: 1px solid var(--glass-border);
+  border: 2px solid #f97316;
   border-radius: var(--radius);
-  box-shadow: var(--glass-shadow);
-  padding: 1.5rem;
-  max-width: 320px;
+  box-shadow: 0 8px 32px rgba(249, 115, 22, 0.2), var(--glass-shadow);
+  padding: 1rem;
+  max-width: 260px;
   width: 100%;
   position: relative;
   text-align: center;
 }
 
+.support-popup-title {
+  font-size: 1rem;
+  font-weight: 600;
+  margin: 0 0 0.5rem;
+  color: #ea580c;
+}
+
+.support-popup-hint {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  margin: 0 0 0.5rem;
+}
+
+.support-popup-qr {
+  max-width: 140px;
+  height: auto;
+  margin: 0.25rem 0;
+}
+
+.support-popup-link {
+  font-size: 0.85rem;
+  padding: 0.4rem 0.75rem;
+  display: inline-block;
+  margin: 0.25rem 0;
+}
+
+.support-popup-number {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  margin: 0.5rem 0 0;
+}
+
 .support-popup-close {
   position: absolute;
-  top: 0.75rem;
-  right: 0.75rem;
-  width: 32px;
-  height: 32px;
+  top: 0.5rem;
+  right: 0.5rem;
+  width: 26px;
+  height: 26px;
   padding: 0;
   border: none;
   background: transparent;
-  font-size: 1.5rem;
+  font-size: 1.25rem;
   line-height: 1;
   color: var(--text-muted);
   cursor: pointer;
@@ -793,30 +887,31 @@ textarea {
   border-color: var(--accent);
 }
 
-/* Image lightbox (full-screen) */
+/* Image lightbox (full-screen, orange accent) */
 .image-lightbox-overlay {
   position: fixed;
   inset: 0;
   z-index: 2000;
   background: rgba(0, 0, 0, 0.9);
+  box-shadow: inset 0 0 0 3px rgba(249, 115, 22, 0.25);
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 2rem;
+  padding: 1rem;
   cursor: zoom-out;
 }
 
 .image-lightbox-close {
   position: absolute;
-  top: 1rem;
-  right: 1rem;
-  width: 48px;
-  height: 48px;
+  top: 0.5rem;
+  right: 0.5rem;
+  width: 36px;
+  height: 36px;
   padding: 0;
   border: none;
-  background: rgba(255, 255, 255, 0.1);
+  background: rgba(249, 115, 22, 0.35);
   color: white;
-  font-size: 1.75rem;
+  font-size: 1.35rem;
   line-height: 1;
   cursor: pointer;
   border-radius: 50%;
@@ -824,7 +919,7 @@ textarea {
 }
 
 .image-lightbox-close:hover {
-  background: rgba(255, 255, 255, 0.2);
+  background: rgba(249, 115, 22, 0.55);
 }
 
 .image-lightbox-img {
@@ -842,13 +937,13 @@ textarea {
   position: absolute;
   top: 50%;
   transform: translateY(-50%);
-  width: 48px;
-  height: 48px;
+  width: 36px;
+  height: 36px;
   padding: 0;
   border: none;
-  background: rgba(255, 255, 255, 0.1);
+  background: rgba(249, 115, 22, 0.35);
   color: white;
-  font-size: 2rem;
+  font-size: 1.5rem;
   line-height: 1;
   cursor: pointer;
   border-radius: 50%;
@@ -856,23 +951,23 @@ textarea {
 }
 
 .image-lightbox-nav:hover {
-  background: rgba(255, 255, 255, 0.2);
+  background: rgba(249, 115, 22, 0.55);
 }
 
 .image-lightbox-prev {
-  left: 1rem;
+  left: 0.5rem;
 }
 
 .image-lightbox-next {
-  right: 1rem;
+  right: 0.5rem;
 }
 
 .image-lightbox-counter {
   position: absolute;
-  bottom: 1.5rem;
+  bottom: 0.75rem;
   left: 50%;
   transform: translateX(-50%);
   color: rgba(255, 255, 255, 0.9);
-  font-size: 0.9rem;
+  font-size: 0.8rem;
   z-index: 1;
 }

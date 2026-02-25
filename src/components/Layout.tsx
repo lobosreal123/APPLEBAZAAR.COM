@@ -165,7 +165,7 @@ export default function Layout({ children }: { children: ReactNode }) {
             </button>
             <h2 id="support-popup-title" className="support-popup-title">Contact support</h2>
             <p className="support-popup-hint">Scan the code with your phone or use the link below.</p>
-            <img src={WHATSAPP_QR_URL} alt="WhatsApp QR code: scan to chat" width={200} height={200} className="support-popup-qr" />
+            <img src={WHATSAPP_QR_URL} alt="WhatsApp QR code: scan to chat" width={140} height={140} className="support-popup-qr" />
             <a
               href={WHATSAPP_URL}
               target="_blank"

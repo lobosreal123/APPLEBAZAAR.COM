@@ -5,13 +5,16 @@ import { useHotItems } from '../hooks/useHotItems'
 import ProductCard from '../components/ProductCard'
 import {
   CATEGORY_TABS,
+  SUB_CATEGORIES,
   filterInventoryByCategory,
+  filterBySubCategory,
   inStock,
   type CategoryTab,
 } from '../utils/categoryFilter'
 import { filterProductsBySearch } from '../utils/search'
 
 const STORAGE_KEY = 'applebazaar_category'
+const SUB_STORAGE_PREFIX = 'applebazaar_sub_'
 
 function getStoredCategory(): CategoryTab {
   try {
@@ -23,12 +26,27 @@ function getStoredCategory(): CategoryTab {
   return 'all'
 }
 
+function getStoredSub(mainTab: Exclude<CategoryTab, 'all'>): string | null {
+  try {
+    const key = SUB_STORAGE_PREFIX + mainTab
+    const s = sessionStorage.getItem(key)
+    const subs = SUB_CATEGORIES[mainTab]
+    if (s && subs?.some((sub) => sub.id === s)) return s
+  } catch {
+    /* ignore */
+  }
+  return null
+}
+
 export default function Home() {
   const [searchParams] = useSearchParams()
   const searchQuery = searchParams.get('q') ?? ''
   const { products, loading, error } = useProducts()
   const { hotItemIds } = useHotItems()
   const [activeTab, setActiveTab] = useState<CategoryTab>(() => getStoredCategory())
+  const [activeSub, setActiveSub] = useState<string | null>(() =>
+    getStoredCategory() !== 'all' ? 'all' : null
+  )
 
   const pendingScrollY = useRef<number | null>(null)
 
@@ -55,6 +73,11 @@ export default function Home() {
 
   const selectTab = useCallback((id: CategoryTab) => {
     setActiveTab(id)
+    if (id === 'all') {
+      setActiveSub(null)
+    } else {
+      setActiveSub('all')
+    }
     try {
       sessionStorage.setItem(STORAGE_KEY, id)
     } catch {
@@ -62,9 +85,26 @@ export default function Home() {
     }
   }, [])
 
+  const selectSub = useCallback((subId: string) => {
+    setActiveSub(subId)
+    if (activeTab !== 'all') {
+      try {
+        sessionStorage.setItem(SUB_STORAGE_PREFIX + activeTab, subId)
+      } catch {
+        /* ignore */
+      }
+    }
+  }, [activeTab])
+
   const inStockOnly = products.filter(inStock)
   const byCategory = filterInventoryByCategory(inStockOnly, activeTab)
-  const filtered = filterProductsBySearch(byCategory, searchQuery)
+  const subTabs = activeTab !== 'all' ? SUB_CATEGORIES[activeTab] : []
+  const effectiveSub = activeSub && subTabs?.some((s) => s.id === activeSub) ? activeSub : subTabs?.[0]?.id ?? null
+  const bySub =
+    activeTab !== 'all' && effectiveSub
+      ? filterBySubCategory(byCategory, activeTab, effectiveSub)
+      : byCategory
+  const filtered = filterProductsBySearch(bySub, searchQuery)
 
   const hotItems = hotItemIds.length > 0
     ? hotItemIds
@@ -111,19 +151,37 @@ export default function Home() {
       )}
 
       <h2 className="section-title">Shop inventory</h2>
-      <div className="category-tabs" role="tablist">
-        {CATEGORY_TABS.map(({ id, label }) => (
-          <button
-            key={id}
-            type="button"
-            role="tab"
-            aria-selected={activeTab === id}
-            className={`tab-button ${activeTab === id ? 'active' : ''}`}
-            onClick={() => selectTab(id)}
-          >
-            {label}
-          </button>
-        ))}
+      <div className="shop-selector-wrap">
+        <div className="category-tabs" role="tablist">
+          {CATEGORY_TABS.map(({ id, label }) => (
+            <button
+              key={id}
+              type="button"
+              role="tab"
+              aria-selected={activeTab === id}
+              className={`tab-button ${activeTab === id ? 'active' : ''}`}
+              onClick={() => selectTab(id)}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+        {subTabs.length > 0 && (
+          <div className="sub-category-tabs" role="tablist" aria-label={`${activeTab} sub-category`}>
+            {subTabs.map((sub) => (
+              <button
+                key={sub.id}
+                type="button"
+                role="tab"
+                aria-selected={effectiveSub === sub.id}
+                className={`tab-button tab-button-sub ${effectiveSub === sub.id ? 'active' : ''}`}
+                onClick={() => selectSub(sub.id)}
+              >
+                {sub.label}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
       <div className="product-grid">
         {filtered.length === 0 ? (
