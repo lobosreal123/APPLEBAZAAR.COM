@@ -116,6 +116,22 @@ export default function Admin() {
       .finally(() => setHotItemsLoading(false))
   }, [canEditHotItems, activeTab])
 
+  /* Automatically remove hot items that have no stock and persist to Firestore */
+  useEffect(() => {
+    if (!canEditHotItems || hotItemIds.length === 0 || products.length === 0) return
+    const inStockIds = new Set(products.filter((p) => p.stock >= 1).map((p) => p.id))
+    const filtered = hotItemIds.filter((id) => inStockIds.has(id))
+    if (filtered.length === hotItemIds.length) return
+    setHotItemIds(filtered)
+    const docRef = doc(db, 'publicStore', 'publicStorewebsite')
+    getDoc(docRef)
+      .then((snap) => {
+        const existing = snap.exists() ? snap.data() : {}
+        return setDoc(docRef, { ...existing, hotItemIds: filtered }, { merge: true })
+      })
+      .catch(() => {})
+  }, [canEditHotItems, hotItemIds, products])
+
   const toggleHotItem = (productId: string) => {
     setHotItemIds((prev) => {
       const idx = prev.indexOf(productId)

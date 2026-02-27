@@ -1,13 +1,15 @@
-import { useState, useEffect } from 'react'
-import { useParams, useNavigate, useLocation } from 'react-router-dom'
+import { useState, useEffect, useMemo } from 'react'
+import { useParams, useNavigate, useLocation, Link } from 'react-router-dom'
 import { doc, getDoc } from 'firebase/firestore'
 import { db } from '../firebase'
 import { useCart } from '../contexts/CartContext'
+import { useProducts } from '../hooks/useProducts'
 import { getPosInventoryPath, parseProductId } from '../config'
 import { getProductImageUrl, type Product } from '../components/ProductCard'
 import { getImageUrls, isValidImageUrl } from '../utils/productMapping'
 import { formatCedi } from '../utils/currency'
 import ImageLightbox from '../components/ImageLightbox'
+import { getItemDisplayCategory } from '../utils/categoryFilter'
 
 function mapInventoryToProduct(id: string, data: Record<string, unknown>): Product {
   const imageUrls = getImageUrls(data)
@@ -30,8 +32,17 @@ function mapInventoryToProduct(id: string, data: Record<string, unknown>): Produ
   }
 }
 
+const SIMILAR_LIMIT = 6
+
+/** First token of name as model (e.g. "16" from "16 camera", "XR" from "XR screen"). */
+function getModelFromName(name: string): string {
+  const token = (name || '').trim().split(/\s+/)[0]
+  return token || ''
+}
+
 export default function ProductDetail() {
   const { id: encodedId } = useParams<{ id: string }>()
+  const { products } = useProducts()
   const [product, setProduct] = useState<Product | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -43,6 +54,25 @@ export default function ProductDetail() {
   const navigate = useNavigate()
   const location = useLocation()
   const storeLocationsFromState = (location.state as { storeLocations?: { ownerId: string; storeId: string }[] })?.storeLocations
+
+  const similarItems = useMemo(() => {
+    if (!product || !products.length) return []
+    const currentCat = getItemDisplayCategory(product)
+    if (!currentCat) return []
+    const model = getModelFromName(product.name)
+    const sameCategory = products.filter(
+      (p) => p.id !== product.id && p.stock >= 1 && getItemDisplayCategory(p) === currentCat
+    )
+    if (!model) return sameCategory.slice(0, SIMILAR_LIMIT)
+    const nameLower = (n: string) => (n || '').toLowerCase()
+    const modelLower = model.toLowerCase()
+    sameCategory.sort((a, b) => {
+      const aMatch = nameLower(a.name).includes(modelLower) ? 0 : 1
+      const bMatch = nameLower(b.name).includes(modelLower) ? 0 : 1
+      return aMatch - bMatch
+    })
+    return sameCategory.slice(0, SIMILAR_LIMIT)
+  }, [product, products])
 
   useEffect(() => {
     if (!encodedId) {
@@ -264,6 +294,43 @@ export default function ProductDetail() {
           initialIndex={selectedIndex}
           onClose={() => setLightboxOpen(false)}
         />
+      )}
+
+      {similarItems.length > 0 && (
+        <section className="product-detail-similar" aria-label="Similar items">
+          <h2 className="product-detail-similar-title">Similar items</h2>
+          <div className="product-detail-similar-list">
+            {similarItems.map((p) => {
+              const imgUrl = getProductImageUrl(p)
+              return (
+                <Link
+                  key={p.id}
+                  to={`/product/${p.id}`}
+                  className="product-detail-similar-item"
+                  onClick={() => {
+                    try {
+                      sessionStorage.setItem('applebazaar_returnScrollY', String(window.scrollY))
+                    } catch {
+                      /* ignore */
+                    }
+                  }}
+                >
+                  <div className="product-detail-similar-img">
+                    {imgUrl && isValidImageUrl(imgUrl) ? (
+                      <img src={imgUrl} alt="" />
+                    ) : (
+                      <span className="product-detail-similar-noimg">No image</span>
+                    )}
+                  </div>
+                  <span className="product-detail-similar-name" title={p.name}>
+                    {p.name}
+                  </span>
+                  <span className="product-detail-similar-price">{formatCedi(p.price)}</span>
+                </Link>
+              )
+            })}
+          </div>
+        </section>
       )}
     </div>
   )
