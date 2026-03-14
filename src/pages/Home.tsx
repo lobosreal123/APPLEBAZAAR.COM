@@ -157,8 +157,10 @@ export default function Home() {
 
       <h2 className="section-title">Shop inventory</h2>
       <div className="shop-selector-wrap">
-        <div className="category-tabs" role="tablist">
-          {CATEGORY_TABS.map(({ id, label }) => (
+        <div className="category-tabs-row">
+          <span className="category-tabs-label" aria-hidden>Category</span>
+          <div className="category-tabs" role="tablist">
+            {CATEGORY_TABS.map(({ id, label }) => (
             <button
               key={id}
               type="button"
@@ -170,9 +172,12 @@ export default function Home() {
               {label}
             </button>
           ))}
+          </div>
         </div>
         {subTabs.length > 0 && (
-          <div className="sub-category-tabs" role="tablist" aria-label={`${activeTab} sub-category`}>
+          <div className="sub-category-tabs-row">
+            <span className="sub-category-tabs-label" aria-hidden>Filter</span>
+            <div className="sub-category-tabs" role="tablist" aria-label={`${activeTab} sub-category`}>
             {subTabs.map((sub) => (
               <button
                 key={sub.id}
@@ -185,6 +190,7 @@ export default function Home() {
                 {sub.label}
               </button>
             ))}
+            </div>
           </div>
         )}
       </div>

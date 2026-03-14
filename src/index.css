@@ -293,23 +293,63 @@ textarea {
   border-radius: var(--radius);
 }
 
-.category-tabs {
+/* Main category row: one row on all screens */
+.category-tabs-row {
   display: flex;
-  flex-wrap: wrap;
+  align-items: center;
   gap: 0.5rem;
   margin-bottom: 0.75rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid var(--glass-border);
+}
+.category-tabs-label {
+  flex-shrink: 0;
+  font-size: 0.65rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+}
+.category-tabs {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 0.4rem;
+  flex: 1;
+  min-width: 0;
+}
+.category-tabs .tab-button {
+  flex: 1 1 0;
+  min-width: 0;
+  padding: 0.4rem 0.5rem;
+  font-size: clamp(0.7rem, 2vw, 0.9rem);
 }
 
-.shop-selector-wrap .category-tabs:last-child {
-  margin-bottom: 0;
+/* Sub-category row: one row on all screens */
+.sub-category-tabs-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
 }
-
-/* Sub-categories: liquid bubble style */
+.sub-category-tabs-label {
+  flex-shrink: 0;
+  font-size: 0.65rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #b45309;
+}
 .sub-category-tabs {
   display: flex;
-  flex-wrap: wrap;
-  gap: 0.6rem;
-  padding-left: 0.25rem;
+  flex-wrap: nowrap;
+  gap: 0.4rem;
+  flex: 1;
+  min-width: 0;
+}
+.sub-category-tabs .tab-button-sub {
+  flex: 1 1 0;
+  min-width: 0;
+  padding: 0.3rem 0.45rem;
+  font-size: clamp(0.6rem, 1.6vw, 0.75rem);
 }
 
 .tab-button-sub {
@@ -470,15 +510,28 @@ textarea {
   }
 }
 
-@media (max-width: 600px) {
+/* Mobile: hot items 5 per row */
+@media (max-width: 768px) {
   .hot-items-grid {
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(5, 1fr);
+    gap: 0.35rem;
   }
-}
-
-@media (max-width: 400px) {
-  .hot-items-grid {
-    grid-template-columns: repeat(2, 1fr);
+  .hot-items-grid .product-card-body {
+    padding: 0.3rem;
+  }
+  .hot-items-grid .product-card-title {
+    font-size: 0.6rem;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+  }
+  .hot-items-grid .product-card-specs {
+    display: none;
+  }
+  .hot-items-grid .product-card-price {
+    font-size: 0.65rem;
+  }
+  .hot-items-grid .product-card-meta {
+    font-size: 0.6rem;
   }
 }
 
@@ -486,6 +539,9 @@ textarea {
   .product-grid {
     grid-template-columns: repeat(3, 1fr);
     gap: 0.5rem;
+  }
+  .product-grid.hot-items-grid {
+    grid-template-columns: repeat(5, 1fr);
   }
   .product-card-body {
     padding: 0.5rem;
