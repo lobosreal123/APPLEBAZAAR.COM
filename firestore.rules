@@ -140,10 +140,20 @@ service cloud.firestore {
       }
       
       // Inventory subcollection (nested under stores)
-      // Owner can read/write. Public read allowed for store(s) in website config (publicStore/publicStorewebsite).
-      // Config: ownerId+storeId/storeIds (single owner) OR storeKeys (array of "ownerId_storeId") for multiple owners.
+      // Owner can read/write. Public read allowed for store(s) in website config (publicStore/publicStorewebsite)
+      // OR for explicitly allowed store keys below (avoids "missing or insufficient permissions" when doc is missing/out of sync).
+      // To add MORE stores in future: add ownerId:storeId to VITE_POS_STORES in .env, then add "ownerId_storeId"
+      // to the storeKeys array in Firestore document publicStore/publicStorewebsite (no rules deploy needed).
+      // Optional: also add the pair below and redeploy rules if you want them allowed without the document.
+      function isAllowedPublicStore(ownerId, storeId) {
+        return (ownerId == 'E0K7KVOjG9XTTOYmLVsEnhZzZiE2' && storeId == 'nFDTwdOBUzQywJRBMNv0') ||
+          (ownerId == 'pY4H0CtpaPTzWKkAbyxVF7fS5J72' && storeId == 'tIJZ0mbHauu21TRoMeZd') ||
+          (ownerId == 'yKlAn2gi6CPIW92WIjx4Mdl0RH12' && storeId == 'tnVCvM8WK1sKFHP17LBv') ||
+          (ownerId == '2gxeaRci3iVJhgK4asLMDloVCBf1' && storeId == 'ypLkxAWx216tZRLclJ16');
+      }
       match /stores/{storeId}/inventory/{itemId} {
         allow read: if (isAuthenticated() && request.auth.uid == userId) ||
+          isAllowedPublicStore(userId, storeId) ||
           (exists(/databases/$(database)/documents/publicStore/publicStorewebsite) &&
            (('storeKeys' in get(/databases/$(database)/documents/publicStore/publicStorewebsite).data && (userId + '_' + storeId) in get(/databases/$(database)/documents/publicStore/publicStorewebsite).data.storeKeys) ||
             (get(/databases/$(database)/documents/publicStore/publicStorewebsite).data.ownerId == userId && (get(/databases/$(database)/documents/publicStore/publicStorewebsite).data.storeId == storeId || ('storeIds' in get(/databases/$(database)/documents/publicStore/publicStorewebsite).data && storeId in get(/databases/$(database)/documents/publicStore/publicStorewebsite).data.storeIds)))));

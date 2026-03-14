@@ -26,15 +26,28 @@ function getStoredCategory(): CategoryTab {
   return 'all'
 }
 
+function getStoredSub(mainTab: Exclude<CategoryTab, 'all'>): string | null {
+  try {
+    const s = sessionStorage.getItem(SUB_STORAGE_PREFIX + mainTab)
+    const subs = SUB_CATEGORIES[mainTab]
+    if (s && subs?.some((sub) => sub.id === s)) return s
+  } catch {
+    /* ignore */
+  }
+  return null
+}
+
 export default function Home() {
   const [searchParams] = useSearchParams()
   const searchQuery = searchParams.get('q') ?? ''
   const { products, loading, error } = useProducts()
   const { hotItemIds } = useHotItems()
   const [activeTab, setActiveTab] = useState<CategoryTab>(() => getStoredCategory())
-  const [activeSub, setActiveSub] = useState<string | null>(() =>
-    getStoredCategory() !== 'all' ? 'all' : null
-  )
+  const [activeSub, setActiveSub] = useState<string | null>(() => {
+    const tab = getStoredCategory()
+    if (tab === 'all') return null
+    return getStoredSub(tab) ?? 'all'
+  })
 
   const pendingScrollY = useRef<number | null>(null)
 
@@ -132,7 +145,11 @@ export default function Home() {
           <h2 className="section-title hot-items-title"><span aria-hidden>🔥</span> <span className="hot-items-text">Hot items</span></h2>
           <div className="product-grid hot-items-grid">
             {hotItems.map((p) => (
-              <ProductCard key={p.id} product={p} />
+              <ProductCard
+                key={p.id}
+                product={p}
+                persistPosition={{ category: activeTab, sub: effectiveSub }}
+              />
             ))}
           </div>
         </section>
@@ -179,7 +196,13 @@ export default function Home() {
               : 'No items in this category right now.'}
           </p>
         ) : (
-          filtered.map((p) => <ProductCard key={p.id} product={p} />)
+          filtered.map((p) => (
+            <ProductCard
+              key={p.id}
+              product={p}
+              persistPosition={{ category: activeTab, sub: effectiveSub }}
+            />
+          ))
         )}
       </div>
     </>

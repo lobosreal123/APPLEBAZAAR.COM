@@ -3,6 +3,9 @@ import { Link } from 'react-router-dom'
 import { formatCedi } from '../utils/currency'
 import { isValidImageUrl } from '../utils/productMapping'
 
+const STORAGE_KEY = 'applebazaar_category'
+const SUB_STORAGE_PREFIX = 'applebazaar_sub_'
+
 export type Product = {
   id: string
   name: string
@@ -32,7 +35,13 @@ export function getProductImageUrl(product: Product): string | undefined {
   return url && isValidImageUrl(url) ? url : undefined
 }
 
-export default function ProductCard({ product }: { product: Product }) {
+type ProductCardProps = {
+  product: Product
+  /** When provided, persists category/sub so they are restored when user returns from product detail. */
+  persistPosition?: { category: string; sub: string | null }
+}
+
+export default function ProductCard({ product, persistPosition }: ProductCardProps) {
   const [imgError, setImgError] = useState(false)
   const inStock = product.stock >= 1
   const src = getProductImageUrl(product)
@@ -41,6 +50,11 @@ export default function ProductCard({ product }: { product: Product }) {
   const saveScrollAndNavigate = () => {
     try {
       sessionStorage.setItem('applebazaar_returnScrollY', String(window.scrollY))
+      if (persistPosition) {
+        sessionStorage.setItem(STORAGE_KEY, persistPosition.category)
+        if (persistPosition.sub)
+          sessionStorage.setItem(SUB_STORAGE_PREFIX + persistPosition.category, persistPosition.sub)
+      }
     } catch {
       /* ignore */
     }
