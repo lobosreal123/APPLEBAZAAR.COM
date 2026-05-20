@@ -2,6 +2,8 @@ import { useState, useEffect, useRef } from 'react'
 import { Link, useNavigate, useLocation, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { useCart } from '../contexts/CartContext'
+import { ShopCategoryProvider } from '../contexts/ShopCategoryContext'
+import { ShopCategoryToggle, ShopCategoryDrawer } from './ShopCategoryPanel'
 import { useAdmin } from '../hooks/useAdmin'
 import type { ReactNode } from 'react'
 
@@ -91,57 +93,75 @@ export default function Layout({ children }: { children: ReactNode }) {
   }
 
   return (
-    <>
+    <ShopCategoryProvider>
+      <ShopCategoryDrawer />
       <header className="app-header">
         <div className="app-header-inner">
-          <Link to={shopTo} className="app-logo">
-            <img src="/favicon.png" alt="" className="app-logo-img" />
-            <span>APPLE BAZAAR</span>
-          </Link>
-          <form className="app-search-form" role="search" onSubmit={handleSearchSubmit}>
-            <input
-              type="search"
-              name="q"
-              className="app-search"
-              placeholder="What are you looking for..."
-              aria-label="Search products"
-              value={searchInput}
-              onChange={(e) => setSearchInput(e.target.value)}
-            />
-          </form>
-          <nav className="app-nav">
-            <Link to={shopTo}>Shop</Link>
+          <div className="app-header-brand">
+            <div className="app-header-category-slot app-header-category-slot--desktop">
+              <ShopCategoryToggle />
+            </div>
+            <Link to={shopTo} className="app-logo">
+              <img src="/favicon.png" alt="" className="app-logo-img" />
+              <span>APPLE BAZAAR</span>
+            </Link>
+          </div>
+          <div className="app-header-search-row">
+            <div className="app-header-category-slot app-header-category-slot--mobile">
+              <ShopCategoryToggle />
+            </div>
+            <form className="app-search-form" role="search" onSubmit={handleSearchSubmit}>
+              <input
+                type="search"
+                name="q"
+                className="app-search"
+                placeholder="What are you looking for..."
+                aria-label="Search products"
+                value={searchInput}
+                onChange={(e) => setSearchInput(e.target.value)}
+              />
+            </form>
+          </div>
+          <nav className="app-nav" aria-label="Account and cart">
             {user && (
-              <Link to="/my-orders">My orders</Link>
+              <Link to="/my-orders" className="app-nav-extra">
+                My orders
+              </Link>
             )}
             {user && isAdmin && (
-              <Link to="/admin">Admin</Link>
+              <Link to="/admin" className="app-nav-extra">
+                Admin
+              </Link>
             )}
-            <button
-              type="button"
-              className="btn-outline"
-              title="Contact support on WhatsApp: +233 54 034 6875"
-              aria-label="Contact support on WhatsApp, +233 54 034 6875"
-              onClick={() => setSupportPopupOpen(true)}
-              style={{ fontSize: '0.9rem', padding: '0.4rem 0.75rem' }}
-            >
-              Contact support <span style={{ opacity: 0.9, fontWeight: 'normal', fontSize: '0.85em' }}>(WhatsApp)</span>
-            </button>
-            <Link to="/cart" className="btn-cart">
-              Cart {totalItems > 0 ? `(${totalItems})` : ''}
-            </Link>
-            {!loading && (
-              user ? (
-                <button type="button" className="btn-outline" onClick={() => signOut()}>
-                  Sign out
-                </button>
-              ) : (
-                <>
-                  <Link to="/login" className="btn-outline">Log in</Link>
-                  <Link to="/signup" className="btn-primary" style={{ padding: '0.5rem 0.9rem' }}>Sign up</Link>
-                </>
-              )
-            )}
+            <div className="app-nav-actions">
+              <button
+                type="button"
+                className="btn-outline app-nav-support-btn"
+                title="Contact support on WhatsApp: +233 54 034 6875"
+                aria-label="Contact support on WhatsApp, +233 54 034 6875"
+                onClick={() => setSupportPopupOpen(true)}
+              >
+                Contact support <span className="app-nav-support-wa">(WhatsApp)</span>
+              </button>
+              <Link to="/cart" className="btn-cart">
+                Cart{totalItems > 0 ? ` (${totalItems})` : ''}
+              </Link>
+              {!loading &&
+                (user ? (
+                  <button type="button" className="btn-outline" onClick={() => signOut()}>
+                    Sign out
+                  </button>
+                ) : (
+                  <>
+                    <Link to="/login" className="btn-outline">
+                      Log in
+                    </Link>
+                    <Link to="/signup" className="btn-primary">
+                      Sign up
+                    </Link>
+                  </>
+                ))}
+            </div>
           </nav>
         </div>
       </header>
@@ -195,6 +215,6 @@ export default function Layout({ children }: { children: ReactNode }) {
           <p style={{ marginTop: '1rem', opacity: 0.8 }}>© {new Date().getFullYear()} Applebazaar</p>
         </div>
       </footer>
-    </>
+    </ShopCategoryProvider>
   )
 }

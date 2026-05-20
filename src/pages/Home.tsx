@@ -1,54 +1,24 @@
-import { useState, useCallback, useEffect, useLayoutEffect, useRef } from 'react'
+import { useEffect, useLayoutEffect, useRef } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { useProducts } from '../hooks/useProducts'
 import { useHotItems } from '../hooks/useHotItems'
+import { useShopCategory } from '../contexts/ShopCategoryContext'
 import ProductCard from '../components/ProductCard'
-import ShopFilters from '../components/ShopFilters'
 import {
   CATEGORY_TABS,
   SUB_CATEGORIES,
   filterInventoryByCategory,
   filterBySubCategory,
   inStock,
-  type CategoryTab,
 } from '../utils/categoryFilter'
 import { filterProductsBySearch } from '../utils/search'
-
-const STORAGE_KEY = 'applebazaar_category'
-const SUB_STORAGE_PREFIX = 'applebazaar_sub_'
-
-function getStoredCategory(): CategoryTab {
-  try {
-    const s = sessionStorage.getItem(STORAGE_KEY)
-    if (s && ['all', 'devices', 'accessories', 'screens', 'custom'].includes(s)) return s as CategoryTab
-  } catch {
-    /* ignore */
-  }
-  return 'all'
-}
-
-function getStoredSub(mainTab: Exclude<CategoryTab, 'all'>): string | null {
-  try {
-    const s = sessionStorage.getItem(SUB_STORAGE_PREFIX + mainTab)
-    const subs = SUB_CATEGORIES[mainTab]
-    if (s && subs?.some((sub) => sub.id === s)) return s
-  } catch {
-    /* ignore */
-  }
-  return null
-}
 
 export default function Home() {
   const [searchParams] = useSearchParams()
   const searchQuery = searchParams.get('q') ?? ''
   const { products, loading, error } = useProducts()
   const { hotItemIds } = useHotItems()
-  const [activeTab, setActiveTab] = useState<CategoryTab>(() => getStoredCategory())
-  const [activeSub, setActiveSub] = useState<string | null>(() => {
-    const tab = getStoredCategory()
-    if (tab === 'all') return null
-    return getStoredSub(tab) ?? 'all'
-  })
+  const { activeTab, effectiveSub } = useShopCategory()
 
   const pendingScrollY = useRef<number | null>(null)
 
@@ -73,35 +43,9 @@ export default function Home() {
     }
   }, [loading])
 
-  const selectTab = useCallback((id: CategoryTab) => {
-    setActiveTab(id)
-    if (id === 'all') {
-      setActiveSub(null)
-    } else {
-      setActiveSub('all')
-    }
-    try {
-      sessionStorage.setItem(STORAGE_KEY, id)
-    } catch {
-      /* ignore */
-    }
-  }, [])
-
-  const selectSub = useCallback((subId: string) => {
-    setActiveSub(subId)
-    if (activeTab !== 'all') {
-      try {
-        sessionStorage.setItem(SUB_STORAGE_PREFIX + activeTab, subId)
-      } catch {
-        /* ignore */
-      }
-    }
-  }, [activeTab])
-
   const inStockOnly = products.filter(inStock)
   const byCategory = filterInventoryByCategory(inStockOnly, activeTab)
   const subTabs = activeTab !== 'all' ? SUB_CATEGORIES[activeTab] : []
-  const effectiveSub = activeSub && subTabs?.some((s) => s.id === activeSub) ? activeSub : subTabs?.[0]?.id ?? null
   const bySub =
     activeTab !== 'all' && effectiveSub
       ? filterBySubCategory(byCategory, activeTab, effectiveSub)
@@ -117,24 +61,34 @@ export default function Home() {
 
   if (loading) {
     return (
-      <div style={{ textAlign: 'center', padding: '3rem' }}>
-        <p style={{ color: 'var(--text-muted)' }}>Loading products…</p>
+      <div className="home-layout">
+        <div className="home-main">
+          <p style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-muted)' }}>
+            Loading products…
+          </p>
+        </div>
       </div>
     )
   }
 
   if (error) {
     return (
-      <div style={{ textAlign: 'center', padding: '3rem' }}>
-        <p style={{ color: 'var(--error)' }}>{error}</p>
+      <div className="home-layout">
+        <div className="home-main">
+          <p style={{ textAlign: 'center', padding: '3rem', color: 'var(--error)' }}>{error}</p>
+        </div>
       </div>
     )
   }
 
   if (products.length === 0) {
     return (
-      <div style={{ textAlign: 'center', padding: '3rem' }}>
-        <p style={{ color: 'var(--text-muted)' }}>No products in inventory yet.</p>
+      <div className="home-layout">
+        <div className="home-main">
+          <p style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-muted)' }}>
+            No products in inventory yet.
+          </p>
+        </div>
       </div>
     )
   }
@@ -146,14 +100,8 @@ export default function Home() {
 
   return (
     <div className="home-layout">
-      <ShopFilters
-        activeTab={activeTab}
-        effectiveSub={effectiveSub}
-        onSelectTab={selectTab}
-        onSelectSub={selectSub}
-      />
       <div className="home-main">
-        {hotItems.length > 0 && (
+        {activeTab === 'all' && hotItems.length > 0 && (
           <section className="home-hot-section">
             <h2 className="section-title hot-items-title">
               <span aria-hidden>🔥</span>{' '}

@@ -46,6 +46,7 @@ export const SUB_CATEGORIES: Record<Exclude<CategoryTab, 'all'>, SubCategoryDef[
     { id: 'adapter', label: 'Adapter', match: (n) => nameIncludes(n, 'adapter') },
     { id: 'macbook-charger', label: 'Macbook charger', match: (n) => nameIncludes(n, 'macbook charger') || (nameIncludes(n, 'macbook') && nameIncludes(n, 'charger')) },
     { id: 'watch', label: 'Watch', match: (n) => nameIncludes(n, 'watch') },
+    { id: 'covers', label: 'Covers', match: (n) => nameIncludes(n, 'cover', 'covers') },
     {
       id: 'others',
       label: 'Others',
@@ -56,6 +57,7 @@ export const SUB_CATEGORIES: Record<Exclude<CategoryTab, 'all'>, SubCategoryDef[
         if (lower.includes('macbook charger')) return false
         if (lower.includes('macbook') && lower.includes('charger')) return false
         if (lower.includes('watch')) return false
+        if (lower.includes('cover') || lower.includes('covers')) return false
         return true
       },
     },
