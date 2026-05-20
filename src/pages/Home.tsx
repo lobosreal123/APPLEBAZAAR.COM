@@ -3,6 +3,7 @@ import { useSearchParams } from 'react-router-dom'
 import { useProducts } from '../hooks/useProducts'
 import { useHotItems } from '../hooks/useHotItems'
 import ProductCard from '../components/ProductCard'
+import ShopFilters from '../components/ShopFilters'
 import {
   CATEGORY_TABS,
   SUB_CATEGORIES,
@@ -138,79 +139,74 @@ export default function Home() {
     )
   }
 
+  const activeCategoryLabel =
+    CATEGORY_TABS.find((t) => t.id === activeTab)?.label ?? 'All'
+  const activeSubLabel =
+    subTabs.find((s) => s.id === effectiveSub)?.label ?? null
+
   return (
-    <>
-      {hotItems.length > 0 && (
-        <section style={{ marginBottom: '2rem' }}>
-          <h2 className="section-title hot-items-title"><span aria-hidden>🔥</span> <span className="hot-items-text">Hot items</span></h2>
-          <div className="product-grid hot-items-grid">
-            {hotItems.map((p) => (
+    <div className="home-layout">
+      <ShopFilters
+        activeTab={activeTab}
+        effectiveSub={effectiveSub}
+        onSelectTab={selectTab}
+        onSelectSub={selectSub}
+      />
+      <div className="home-main">
+        {hotItems.length > 0 && (
+          <section className="home-hot-section">
+            <h2 className="section-title hot-items-title">
+              <span aria-hidden>🔥</span>{' '}
+              <span className="hot-items-text">Hot items</span>
+            </h2>
+            <div className="product-grid hot-items-grid">
+              {hotItems.map((p) => (
+                <ProductCard
+                  key={p.id}
+                  product={p}
+                  persistPosition={{ category: activeTab, sub: effectiveSub }}
+                />
+              ))}
+            </div>
+          </section>
+        )}
+
+        <header className="home-inventory-header">
+          <h2 className="section-title home-inventory-title">Shop inventory</h2>
+          <p className="home-inventory-active" aria-live="polite">
+            Showing: <strong>{activeCategoryLabel}</strong>
+            {activeSubLabel ? (
+              <>
+                {' '}
+                · <strong>{activeSubLabel}</strong>
+              </>
+            ) : null}
+            {searchQuery ? (
+              <>
+                {' '}
+                · search &ldquo;{searchQuery}&rdquo;
+              </>
+            ) : null}
+          </p>
+        </header>
+        <div className="product-grid">
+          {filtered.length === 0 ? (
+            <p className="home-empty" style={{ gridColumn: '1 / -1' }}>
+              {searchQuery
+                ? `No items match "${searchQuery}". Try a different search or category.`
+                : 'No items in this category right now.'}
+            </p>
+          ) : (
+            filtered.map((p) => (
               <ProductCard
                 key={p.id}
                 product={p}
                 persistPosition={{ category: activeTab, sub: effectiveSub }}
               />
-            ))}
-          </div>
-        </section>
-      )}
-
-      <h2 className="section-title">Shop inventory</h2>
-      <div className="shop-selector-wrap">
-        <div className="category-tabs-row">
-          <span className="category-tabs-label" aria-hidden>Category</span>
-          <div className="category-tabs" role="tablist">
-            {CATEGORY_TABS.map(({ id, label }) => (
-            <button
-              key={id}
-              type="button"
-              role="tab"
-              aria-selected={activeTab === id}
-              className={`tab-button ${activeTab === id ? 'active' : ''}`}
-              onClick={() => selectTab(id)}
-            >
-              {label}
-            </button>
-          ))}
-          </div>
+            ))
+          )}
         </div>
-        {subTabs.length > 0 && (
-          <div className="sub-category-tabs-row">
-            <span className="sub-category-tabs-label" aria-hidden>Filter</span>
-            <div className="sub-category-tabs" role="tablist" aria-label={`${activeTab} sub-category`}>
-            {subTabs.map((sub) => (
-              <button
-                key={sub.id}
-                type="button"
-                role="tab"
-                aria-selected={effectiveSub === sub.id}
-                className={`tab-button tab-button-sub ${effectiveSub === sub.id ? 'active' : ''}`}
-                onClick={() => selectSub(sub.id)}
-              >
-                {sub.label}
-              </button>
-            ))}
-            </div>
-          </div>
-        )}
       </div>
-      <div className="product-grid">
-        {filtered.length === 0 ? (
-          <p style={{ gridColumn: '1 / -1', color: 'var(--text-muted)', textAlign: 'center' }}>
-            {searchQuery
-              ? `No items match "${searchQuery}". Try a different search or category.`
-              : 'No items in this category right now.'}
-          </p>
-        ) : (
-          filtered.map((p) => (
-            <ProductCard
-              key={p.id}
-              product={p}
-              persistPosition={{ category: activeTab, sub: effectiveSub }}
-            />
-          ))
-        )}
-      </div>
-    </>
+    </div>
   )
 }

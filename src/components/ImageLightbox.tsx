@@ -1,4 +1,5 @@
 import { useEffect, useCallback, useState } from 'react'
+import { useSwipe } from '../hooks/useSwipe'
 
 type Props = {
   imageUrls: string[]
@@ -22,6 +23,12 @@ export default function ImageLightbox({ imageUrls, initialIndex = 0, onClose }: 
   const goNext = useCallback(() => {
     setIdx((i) => (i >= maxIdx ? 0 : i + 1))
   }, [maxIdx])
+
+  useEffect(() => {
+    setIdx(Math.min(Math.max(0, initialIndex), maxIdx))
+  }, [initialIndex, maxIdx])
+
+  const swipe = useSwipe(goNext, goPrev)
 
   const handleKeyDown = useCallback(
     (e: KeyboardEvent) => {
@@ -50,6 +57,8 @@ export default function ImageLightbox({ imageUrls, initialIndex = 0, onClose }: 
       aria-modal="true"
       aria-label="View image full screen"
       onClick={(e) => e.target === e.currentTarget && onClose()}
+      onTouchStart={swipe.onTouchStart}
+      onTouchEnd={swipe.onTouchEnd}
     >
       <button
         type="button"

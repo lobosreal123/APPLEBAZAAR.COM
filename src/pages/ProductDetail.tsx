@@ -1,4 +1,5 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useCallback } from 'react'
+import { useSwipe } from '../hooks/useSwipe'
 import { useParams, useNavigate, useLocation, Link } from 'react-router-dom'
 import { doc, getDoc } from 'firebase/firestore'
 import { db } from '../firebase'
@@ -164,6 +165,39 @@ export default function ProductDetail() {
     setFailedIndices(new Set())
   }, [product?.id])
 
+  const raw = product
+    ? product.imageUrls?.length
+      ? product.imageUrls
+      : product.imageUrl
+        ? [product.imageUrl]
+        : []
+    : []
+  const urls = raw.filter((u): u is string => typeof u === 'string' && isValidImageUrl(u))
+
+  const goPrevImage = useCallback(() => {
+    if (urls.length <= 1) return
+    setSelectedIndex((i) => {
+      let next = i <= 0 ? urls.length - 1 : i - 1
+      while (failedIndices.has(next) && next !== i) {
+        next = next <= 0 ? urls.length - 1 : next - 1
+      }
+      return next
+    })
+  }, [urls.length, failedIndices])
+
+  const goNextImage = useCallback(() => {
+    if (urls.length <= 1) return
+    setSelectedIndex((i) => {
+      let next = i >= urls.length - 1 ? 0 : i + 1
+      while (failedIndices.has(next) && next !== i) {
+        next = next >= urls.length - 1 ? 0 : next + 1
+      }
+      return next
+    })
+  }, [urls.length, failedIndices])
+
+  const gallerySwipe = useSwipe(goNextImage, goPrevImage)
+
   if (loading) {
     return (
       <div style={{ padding: '2rem' }}>
@@ -199,10 +233,9 @@ export default function ProductDetail() {
     })
   }
 
-  const raw = product.imageUrls?.length ? product.imageUrls : (product.imageUrl ? [product.imageUrl] : [])
-  const urls = raw.filter((u): u is string => typeof u === 'string' && isValidImageUrl(u))
   const mainUrl = urls[selectedIndex]
   const mainFailed = mainUrl && failedIndices.has(selectedIndex)
+  const validCount = urls.filter((_, i) => !failedIndices.has(i)).length
 
   return (
     <div className="product-detail">
@@ -220,42 +253,80 @@ export default function ProductDetail() {
         </p>
       )}
       <div className="product-detail-gallery">
-        <div className="product-detail-image">
+        <div
+          className="product-detail-image"
+          onTouchStart={urls.length > 1 ? gallerySwipe.onTouchStart : undefined}
+          onTouchEnd={urls.length > 1 ? gallerySwipe.onTouchEnd : undefined}
+        >
           {mainUrl && !mainFailed ? (
-            <button
-              type="button"
-              className="image-lightbox-trigger"
-              onClick={() => setLightboxOpen(true)}
-              style={{ padding: 0, border: 'none', background: 'none', cursor: 'zoom-in', width: '100%', display: 'block' }}
-              aria-label="View image full screen"
-            >
-              <img
-                key={mainUrl}
-                src={mainUrl}
-                alt={product.name || 'Product'}
-                onError={() => setFailedIndices((prev) => new Set(prev).add(selectedIndex))}
-              />
-            </button>
+            <>
+              <button
+                type="button"
+                className="image-lightbox-trigger"
+                onClick={() => {
+                  if (gallerySwipe.consumeClick()) return
+                  setLightboxOpen(true)
+                }}
+                aria-label="View image full screen"
+              >
+                <img
+                  key={mainUrl}
+                  src={mainUrl}
+                  alt={product.name || 'Product'}
+                  draggable={false}
+                  onError={() => setFailedIndices((prev) => new Set(prev).add(selectedIndex))}
+                />
+              </button>
+              {urls.length > 1 && (
+                <>
+                  <button
+                    type="button"
+                    className="product-detail-gallery-nav product-detail-gallery-prev"
+                    aria-label="Previous image"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      goPrevImage()
+                    }}
+                  >
+                    ‹
+                  </button>
+                  <button
+                    type="button"
+                    className="product-detail-gallery-nav product-detail-gallery-next"
+                    aria-label="Next image"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      goNextImage()
+                    }}
+                  >
+                    ›
+                  </button>
+                  <span className="product-detail-gallery-counter" aria-live="polite">
+                    {selectedIndex + 1} / {validCount || urls.length}
+                  </span>
+                  <span className="product-detail-swipe-hint">Swipe to browse photos</span>
+                </>
+              )}
+            </>
           ) : (
             <span style={{ color: 'var(--text-muted)' }}>No image</span>
           )}
         </div>
         {urls.length > 1 && (
-          <div className="product-detail-thumbnails">
+          <div className="product-detail-thumbnails" role="tablist" aria-label="Product images">
             {urls.map((url, i) => {
               if (failedIndices.has(i)) return null
               return (
                 <button
                   key={`${i}-${url.slice(0, 40)}`}
                   type="button"
+                  role="tab"
                   className={`product-detail-thumb ${selectedIndex === i ? 'active' : ''}`}
-                  onClick={() => {
-                    setSelectedIndex(i)
-                    setLightboxOpen(true)
-                  }}
-                  aria-label={`View image ${i + 1} full screen`}
+                  onClick={() => setSelectedIndex(i)}
+                  aria-label={`Show image ${i + 1}`}
+                  aria-selected={selectedIndex === i}
                 >
-                  <img src={url} alt="" onError={() => setFailedIndices((prev) => new Set(prev).add(i))} />
+                  <img src={url} alt="" draggable={false} onError={() => setFailedIndices((prev) => new Set(prev).add(i))} />
                 </button>
               )
             })}

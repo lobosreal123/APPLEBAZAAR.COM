@@ -286,7 +286,181 @@ textarea {
   margin: 0 0 1.25rem;
 }
 
-/* Category + sub-category selector wrap */
+/* Home: sidebar filters + main content */
+.home-layout {
+  display: grid;
+  grid-template-columns: minmax(168px, 200px) 1fr;
+  gap: 1.25rem 1.5rem;
+  align-items: start;
+}
+
+.home-main {
+  min-width: 0;
+}
+
+.home-hot-section {
+  margin-bottom: 2rem;
+}
+
+.home-inventory-header {
+  margin-bottom: 1rem;
+}
+
+.home-inventory-title {
+  margin-bottom: 0.35rem;
+}
+
+.home-inventory-active {
+  margin: 0;
+  font-size: 0.9rem;
+  color: var(--text-muted);
+}
+
+.home-inventory-active strong {
+  color: var(--text-heading);
+  font-weight: 600;
+}
+
+.home-empty {
+  color: var(--text-muted);
+  text-align: center;
+  padding: 2rem 1rem;
+}
+
+/* Shop sidebar filters */
+.shop-sidebar {
+  position: sticky;
+  top: 0.75rem;
+  padding: 1rem;
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius);
+  backdrop-filter: blur(10px);
+}
+
+.shop-sidebar-heading {
+  margin: 0 0 1rem;
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--text-heading);
+}
+
+.shop-sidebar-section {
+  margin-bottom: 1rem;
+}
+
+.shop-sidebar-section:last-child {
+  margin-bottom: 0;
+}
+
+.shop-sidebar-label {
+  margin: 0 0 0.5rem;
+  font-size: 0.65rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--text-muted);
+}
+
+.shop-sidebar-label-filter {
+  color: #b45309;
+}
+
+.shop-sidebar-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.shop-sidebar-btn {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  font-family: inherit;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: color 0.15s, background 0.15s, border-color 0.15s, box-shadow 0.15s;
+}
+
+.shop-sidebar-btn-main {
+  color: var(--text-muted);
+  background: rgba(255, 255, 255, 0.5);
+  border: 1px solid var(--glass-border);
+}
+
+.shop-sidebar-btn-main:hover {
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.85);
+}
+
+.shop-sidebar-btn-main.active {
+  color: var(--primary);
+  background: rgba(255, 255, 255, 0.95);
+  border-color: var(--primary);
+  box-shadow: 0 2px 8px rgba(13, 148, 136, 0.12);
+}
+
+.shop-sidebar-btn-sub {
+  font-family: 'Nunito', var(--sans);
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #ea580c;
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.85) 0%, rgba(255, 255, 255, 0.55) 100%);
+  border: 2px solid transparent;
+  border-radius: 9999px;
+}
+
+.shop-sidebar-btn-sub:hover {
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.95) 0%, rgba(254, 243, 235, 0.85) 100%);
+}
+
+.shop-sidebar-btn-sub.active {
+  border-color: #eab308;
+  box-shadow: 0 2px 8px rgba(234, 179, 8, 0.25);
+}
+
+.shop-sidebar-filters {
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--glass-border);
+}
+
+@media (max-width: 768px) {
+  .home-layout {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+
+  .shop-sidebar {
+    position: sticky;
+    top: 0;
+    z-index: 20;
+    margin: -0.25rem -0.25rem 0;
+    border-radius: var(--radius-sm);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.06);
+  }
+
+  .shop-sidebar-list {
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+  }
+
+  .shop-sidebar-btn {
+    width: auto;
+    flex: 1 1 auto;
+    min-width: fit-content;
+    text-align: center;
+    white-space: nowrap;
+  }
+}
+
+/* Legacy horizontal tabs (admin etc.) */
 .shop-selector-wrap {
   padding: 1rem;
   margin-bottom: 1.25rem;
@@ -739,6 +913,7 @@ textarea {
 }
 
 .product-detail-image {
+  position: relative;
   aspect-ratio: 1;
   background: rgba(255, 255, 255, 0.6);
   backdrop-filter: blur(8px);
@@ -748,12 +923,108 @@ textarea {
   display: flex;
   align-items: center;
   justify-content: center;
+  touch-action: pan-y;
+}
+
+.product-detail-image .image-lightbox-trigger {
+  width: 100%;
+  height: 100%;
+  padding: 0;
+  border: none;
+  background: none;
+  cursor: zoom-in;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .product-detail-image img {
   width: 100%;
   height: 100%;
   object-fit: contain;
+  pointer-events: none;
+}
+
+.product-detail-gallery-nav {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  border: none;
+  background: rgba(255, 255, 255, 0.92);
+  color: var(--text-heading);
+  font-size: 1.5rem;
+  line-height: 1;
+  border-radius: 50%;
+  cursor: pointer;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.12);
+  z-index: 2;
+  transition: background 0.15s, transform 0.15s;
+}
+
+.product-detail-gallery-nav:hover {
+  background: #fff;
+  transform: translateY(-50%) scale(1.05);
+}
+
+.product-detail-gallery-prev {
+  left: 0.5rem;
+}
+
+.product-detail-gallery-next {
+  right: 0.5rem;
+}
+
+.product-detail-gallery-counter {
+  position: absolute;
+  bottom: 0.5rem;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 0.2rem 0.6rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--text-heading);
+  background: rgba(255, 255, 255, 0.9);
+  border-radius: 9999px;
+  z-index: 2;
+  pointer-events: none;
+}
+
+.product-detail-swipe-hint {
+  display: none;
+  position: absolute;
+  top: 0.5rem;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 0.2rem 0.55rem;
+  font-size: 0.65rem;
+  color: var(--text-muted);
+  background: rgba(255, 255, 255, 0.88);
+  border-radius: 9999px;
+  z-index: 2;
+  pointer-events: none;
+  white-space: nowrap;
+}
+
+@media (max-width: 768px) {
+  .product-detail-swipe-hint {
+    display: block;
+  }
+
+  .product-detail-thumbnails {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scroll-snap-type: x proximity;
+    padding-bottom: 0.25rem;
+  }
+
+  .product-detail-thumb {
+    flex-shrink: 0;
+    scroll-snap-align: start;
+  }
 }
 
 .product-detail-gallery {
@@ -1075,8 +1346,8 @@ textarea {
   position: absolute;
   top: 50%;
   transform: translateY(-50%);
-  width: 36px;
-  height: 36px;
+  width: 44px;
+  height: 44px;
   padding: 0;
   border: none;
   background: rgba(249, 115, 22, 0.35);
@@ -1098,6 +1369,20 @@ textarea {
 
 .image-lightbox-next {
   right: 0.5rem;
+}
+
+@media (max-width: 768px) {
+  .image-lightbox-nav {
+    width: 48px;
+    height: 48px;
+    font-size: 1.75rem;
+  }
+
+  .image-lightbox-close {
+    width: 44px;
+    height: 44px;
+    font-size: 1.5rem;
+  }
 }
 
 .image-lightbox-counter {
