@@ -1,3 +1,10 @@
+/**
+ * Telegram for **new website orders only** — sent from the storefront at checkout,
+ * not from the POS app (see pos-system docs/WEBSITE_ORDERS.md).
+ *
+ * Flow: `src/pages/Checkout.tsx` → after `addDoc(websiteOrders)` → `notifyWebsiteOrderTelegram`
+ * uses `telegramNotificationText` built in `src/utils/cashierPayment.ts`.
+ */
 import { doc, getDoc } from 'firebase/firestore'
 import { db } from '../firebase'
 

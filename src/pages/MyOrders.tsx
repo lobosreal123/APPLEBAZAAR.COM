@@ -1,27 +1,40 @@
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { isValidImageUrl } from '../utils/productMapping'
-import { collection, doc, query, getDocs, getDoc, orderBy } from 'firebase/firestore'
-import { db } from '../firebase'
+import { collection, getDocs } from 'firebase/firestore'
+import { auth, db } from '../firebase'
 import { useAuth } from '../contexts/AuthContext'
+import { getFirebaseErrorCode, getFriendlyErrorMessage } from '../utils/friendlyErrors'
+import {
+  resolveCustomerOrder,
+  type CustomerOrderSummary,
+  type OrderRefData,
+} from '../utils/orderRefs'
 
-type OrderItem = { id: string; name: string; price: number; quantity: number; imageUrl?: string }
-type Order = {
-  id: string
-  refId: string
-  orderNumber?: string
-  items: OrderItem[]
-  total: number
-  currency?: string
-  status: string
-  createdAt: string | { toDate?: () => Date } | Date
+async function fetchOrderRefs(uid: string) {
+  const refsCol = collection(db, 'users', uid, 'orderRefs')
+  try {
+    return await getDocs(refsCol)
+  } catch (err) {
+    if (getFirebaseErrorCode(err) === 'permission-denied' && auth.currentUser) {
+      await auth.currentUser.getIdToken(true)
+      return await getDocs(refsCol)
+    }
+    throw err
+  }
 }
 
-type OrderRef = { ownerId: string; storeId: string; orderId: string; orderNumber: string; createdAt: string }
+function sortRefsNewestFirst(refs: { refId: string; refData: OrderRefData }[]) {
+  return [...refs].sort((a, b) => {
+    const ta = new Date(a.refData.createdAt || 0).getTime()
+    const tb = new Date(b.refData.createdAt || 0).getTime()
+    return tb - ta
+  })
+}
 
 export default function MyOrders() {
   const { user, loading: authLoading } = useAuth()
-  const [orders, setOrders] = useState<Order[]>([])
+  const [orders, setOrders] = useState<CustomerOrderSummary[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -30,77 +43,110 @@ export default function MyOrders() {
     if (!user) {
       setLoading(false)
       setOrders([])
+      setError(null)
       return
     }
+
     let cancelled = false
+    setLoading(true)
     setError(null)
-    const refsCol = collection(db, 'users', user.uid, 'orderRefs')
-    const q = query(refsCol, orderBy('createdAt', 'desc'))
-    getDocs(q)
-      .then(async (snap) => {
+
+    const load = async () => {
+      try {
+        if (auth.currentUser) {
+          await auth.currentUser.getIdToken()
+        }
+
+        const snap = await fetchOrderRefs(user.uid)
         if (cancelled) return
-        const refs = snap.docs.map((refDoc) => ({ refDoc, refData: refDoc.data() as OrderRef }))
-        const orderPromises = refs.map(({ refDoc, refData }) => {
-          const orderDoc = doc(db, 'users', refData.ownerId, 'stores', refData.storeId, 'websiteOrders', refData.orderId)
-          return getDoc(orderDoc).then((orderSnap) => ({ orderSnap, refData, refId: refDoc.id }))
-        })
-        const results = await Promise.all(orderPromises)
-        const list: Order[] = []
-        for (const { orderSnap, refData, refId } of results) {
-          try {
-            if (orderSnap.exists()) {
-              const d = orderSnap.data()
-              list.push({
-                id: orderSnap.id,
-                refId,
-                orderNumber: refData.orderNumber ?? d?.orderNumber,
-                items: (d?.items ?? []) as OrderItem[],
-                total: Number(d?.total ?? 0),
-                currency: d?.currency,
-                status: String(d?.status ?? 'pending'),
-                createdAt: d?.createdAt ?? refData.createdAt,
-              })
-            }
-          } catch {
-            // Skip orders that fail (e.g. permission or deleted)
+
+        const refs = sortRefsNewestFirst(
+          snap.docs.map((refDoc) => ({
+            refId: refDoc.id,
+            refData: refDoc.data() as OrderRefData,
+          }))
+        )
+
+        const settled = await Promise.allSettled(
+          refs.map(({ refId, refData }) => resolveCustomerOrder(user.uid, refId, refData))
+        )
+        if (cancelled) return
+
+        const list: CustomerOrderSummary[] = []
+        for (const result of settled) {
+          if (result.status === 'fulfilled' && result.value) {
+            list.push(result.value.summary)
           }
         }
-        if (!cancelled) setOrders(list)
-      })
-      .catch((err) => {
-        if (!cancelled) setError(err instanceof Error ? err.message : 'Failed to load orders')
-      })
-      .finally(() => {
+
+        setOrders(list)
+        setError(null)
+      } catch (err) {
+        if (cancelled) return
+        const code = getFirebaseErrorCode(err)
+        if (code === 'permission-denied') {
+          setOrders([])
+          setError(null)
+        } else {
+          setOrders([])
+          setError(getFriendlyErrorMessage(err, 'orders'))
+        }
+      } finally {
         if (!cancelled) setLoading(false)
-      })
+      }
+    }
+
+    void load()
     return () => {
       cancelled = true
     }
   }, [user, authLoading])
 
   if (loading) return <p style={{ padding: '2rem', color: 'var(--text-muted)' }}>Loading orders…</p>
-  if (error) return <p style={{ color: 'var(--error)', padding: '2rem' }}>{error}</p>
+
+  if (!user) {
+    return (
+      <div style={{ padding: '2rem' }}>
+        <h1 className="section-title">My orders</h1>
+        <p style={{ color: 'var(--text-muted)' }}>
+          Please <Link to="/login">log in</Link> to view your orders.
+        </p>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div style={{ padding: '2rem' }}>
+        <h1 className="section-title">My orders</h1>
+        <p style={{ color: 'var(--error)' }}>{error}</p>
+        <p style={{ marginTop: '1rem' }}>
+          <Link to="/">Back to shop</Link>
+        </p>
+      </div>
+    )
+  }
 
   if (orders.length === 0) {
     return (
       <div style={{ padding: '2rem' }}>
         <h1 className="section-title">My orders</h1>
         <p style={{ color: 'var(--text-muted)' }}>You haven’t placed any orders yet.</p>
+        <p style={{ marginTop: '1rem' }}>
+          <Link to="/" className="btn-primary" style={{ display: 'inline-block', textDecoration: 'none' }}>
+            Start shopping
+          </Link>
+        </p>
       </div>
     )
   }
 
-  const formatDate = (raw: Order['createdAt']) => {
-    if (!raw) return '—'
-    const d = typeof raw === 'string'
-      ? new Date(raw)
-      : raw && typeof (raw as { toDate?: () => Date }).toDate === 'function'
-        ? (raw as { toDate: () => Date }).toDate()
-        : new Date(raw as Date)
-    return d.toLocaleDateString()
+  const formatDate = (raw: string) => {
+    const d = new Date(raw)
+    return Number.isNaN(d.getTime()) ? '—' : d.toLocaleDateString()
   }
 
-  const formatTotal = (order: Order) => {
+  const formatTotal = (order: CustomerOrderSummary) => {
     const sym = order.currency === 'GHS' ? 'GH₵' : '$'
     return `${sym}${order.total.toFixed(2)}`
   }
@@ -113,7 +159,9 @@ export default function MyOrders() {
   return (
     <div style={{ padding: '2rem 0' }}>
       <h1 className="section-title">My orders</h1>
-      <p style={{ color: 'var(--text-muted)', marginBottom: '1rem', fontSize: '0.95rem' }}>Click an order to view full details.</p>
+      <p style={{ color: 'var(--text-muted)', marginBottom: '1rem', fontSize: '0.95rem' }}>
+        Click an order to view full details.
+      </p>
       {hasPendingOrders && (
         <div
           style={{
@@ -132,14 +180,23 @@ export default function MyOrders() {
           <div>
             <p style={{ margin: 0, fontWeight: 600, fontSize: '0.95rem' }}>Contact support on WhatsApp</p>
             <p style={{ margin: '0.25rem 0 0', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
-              If your order is delayed, scan the code or message us at <a href={whatsappUrl} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--primary)', textDecoration: 'none' }}>+233 54 034 6875</a>.
+              If your order is delayed, scan the code or message us at{' '}
+              <a
+                href={whatsappUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{ color: 'var(--primary)', textDecoration: 'none' }}
+              >
+                +233 54 034 6875
+              </a>
+              .
             </p>
           </div>
         </div>
       )}
       <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
         {orders.map((order) => (
-          <li key={order.id} style={{ marginBottom: '1rem' }}>
+          <li key={order.refId} style={{ marginBottom: '1rem' }}>
             <Link
               to={`/my-orders/view/${order.refId}`}
               style={{
@@ -155,23 +212,38 @@ export default function MyOrders() {
             >
               <div style={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.5rem' }}>
                 <strong>{order.orderNumber || `Order ${order.id.slice(0, 8)}…`}</strong>
-                <span>{formatDate(order.createdAt)} · {formatTotal(order)}</span>
+                <span>
+                  {formatDate(order.createdAt)} · {formatTotal(order)}
+                </span>
               </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginTop: '0.5rem', flexWrap: 'wrap' }}>
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.75rem',
+                  marginTop: '0.5rem',
+                  flexWrap: 'wrap',
+                }}
+              >
                 {order.items.filter((i) => i.imageUrl && isValidImageUrl(i.imageUrl)).length > 0 ? (
                   <div style={{ display: 'flex', gap: 4 }}>
-                    {order.items.filter((i) => i.imageUrl && isValidImageUrl(i.imageUrl)).slice(0, 4).map((i, idx) => (
-                      <img
-                        key={`${i.id}-${idx}`}
-                        src={i.imageUrl}
-                        alt=""
-                        style={{ width: 40, height: 40, objectFit: 'cover', borderRadius: 6 }}
-                      />
-                    ))}
+                    {order.items
+                      .filter((i) => i.imageUrl && isValidImageUrl(i.imageUrl))
+                      .slice(0, 4)
+                      .map((i, idx) => (
+                        <img
+                          key={`${i.id}-${idx}`}
+                          src={i.imageUrl}
+                          alt=""
+                          style={{ width: 40, height: 40, objectFit: 'cover', borderRadius: 6 }}
+                        />
+                      ))}
                   </div>
                 ) : null}
                 <p style={{ margin: 0, fontSize: '0.875rem', color: 'var(--text)', flex: 1 }}>
-                  {order.items.map((i) => `${i.name} × ${i.quantity}`).join(', ')}
+                  {order.items.length > 0
+                    ? order.items.map((i) => `${i.name} × ${i.quantity}`).join(', ')
+                    : 'Tap to view order details'}
                 </p>
               </div>
               <p style={{ margin: '0.25rem 0 0', fontSize: '0.875rem' }}>Status: {order.status}</p>

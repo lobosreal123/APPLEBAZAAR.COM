@@ -12,6 +12,7 @@ import { getImageUrls, isValidImageUrl } from '../utils/productMapping'
 import { formatCedi } from '../utils/currency'
 import ImageLightbox from '../components/ImageLightbox'
 import AddToCartPreferenceModal from '../components/AddToCartPreferenceModal'
+import FavoriteToggle from '../components/FavoriteToggle'
 import { getItemDisplayCategory } from '../utils/categoryFilter'
 
 function mapInventoryToProduct(id: string, data: Record<string, unknown>): Product {
@@ -348,7 +349,10 @@ export default function ProductDetail() {
         )}
       </div>
       <div className="product-detail-info">
-        <h1>{product.name}</h1>
+        <div className="product-detail-title-row">
+          <h1>{product.name}</h1>
+          <FavoriteToggle productId={product.id} size="md" />
+        </div>
         {(product.color || product.storage) && (
           <p className="product-detail-specs">
             {[product.color, product.storage].filter(Boolean).join(' · ')}

@@ -1,6 +1,6 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
-import { collection, addDoc } from 'firebase/firestore'
+import { collection, addDoc, doc, setDoc } from 'firebase/firestore'
 import { db } from '../firebase'
 import { useAuth } from '../contexts/AuthContext'
 import { useCart } from '../contexts/CartContext'
@@ -16,6 +16,7 @@ import {
 } from '../utils/cashierPayment'
 import { resolveStoreDisplayName } from '../utils/resolveStoreName'
 import { notifyWebsiteOrderTelegram } from '../services/telegramNotify'
+import { getFriendlyErrorMessage } from '../utils/friendlyErrors'
 
 const formStyle: React.CSSProperties = {
   maxWidth: 480,
@@ -81,7 +82,7 @@ function groupItemsByStore(
 }
 
 export default function Checkout() {
-  const { user } = useAuth()
+  const { user, profile } = useAuth()
   const { items, subtotal, clearCart } = useCart()
   const navigate = useNavigate()
   const [submitting, setSubmitting] = useState(false)
@@ -100,6 +101,15 @@ export default function Checkout() {
     amountSent: '',
   })
   const [confirmPartialPayment, setConfirmPartialPayment] = useState(false)
+
+  useEffect(() => {
+    if (!profile) return
+    setForm((prev) => ({
+      ...prev,
+      fullName: prev.fullName || profile.username || '',
+      phone: prev.phone || profile.phone || '',
+    }))
+  }, [profile?.username, profile?.phone])
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }))
@@ -196,6 +206,7 @@ export default function Checkout() {
           ? amountSentTotal
           : Math.round(amountSentTotal * orderRatio * 100) / 100
         const isFullPayment = paidAmount >= orderTotal
+        const createdAt = new Date().toISOString()
         const orderPayload: Record<string, unknown> = {
           status: 'pending',
           items: storeItems.map((it) => ({
@@ -210,7 +221,7 @@ export default function Checkout() {
           currency: CURRENCY,
           customerInfo,
           orderNumber,
-          createdAt: new Date().toISOString(),
+          createdAt,
           customerId: user.uid,
           paymentMethod,
           paymentStatus: paymentMethod === 'Cash' ? 'unpaid' : (isFullPayment ? 'paid' : 'partial'),
@@ -258,11 +269,16 @@ export default function Checkout() {
         orderPayload.telegramPaymentText = telegramPaymentText
         orderPayload.telegramNotificationText = buildTelegramOrderNotification({
           storeName,
+          ownerId,
           orderNumber,
+          createdAt,
           customerName: (customerInfo.name as string) || 'Customer',
           customerPhone: customerInfo.phone as string | undefined,
+          customerEmail: customerInfo.email as string | undefined,
+          customerAddress: customerInfo.address as string | undefined,
           items: storeItems,
           total: orderTotal,
+          currency: CURRENCY,
           paymentMethod,
           paymentStatus: orderPayload.paymentStatus as string,
           paidAmount,
@@ -277,13 +293,18 @@ export default function Checkout() {
         })
         const ordersRef = collection(db, 'users', ownerId, 'stores', storeId, 'websiteOrders')
         const docRef = await addDoc(ordersRef, omitUndefined(orderPayload))
+        const orderRefId = `${ownerId}_${storeId}_${docRef.id}`
         const customerOrderRefs = collection(db, 'users', user.uid, 'orderRefs')
-        await addDoc(customerOrderRefs, {
+        await setDoc(doc(customerOrderRefs, orderRefId), {
           ownerId,
           storeId,
           orderId: docRef.id,
           orderNumber,
-          createdAt: new Date().toISOString(),
+          createdAt,
+          status: 'pending',
+          total: orderTotal,
+          currency: CURRENCY,
+          items: orderPayload.items,
         })
 
         void notifyWebsiteOrderTelegram({
@@ -295,7 +316,7 @@ export default function Checkout() {
       clearCart()
       navigate('/order-confirmation', { replace: true })
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Order failed')
+      setError(getFriendlyErrorMessage(err, 'order'))
     } finally {
       setSubmitting(false)
     }

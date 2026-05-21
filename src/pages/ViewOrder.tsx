@@ -4,8 +4,10 @@ import { isValidImageUrl } from '../utils/productMapping'
 import { doc, getDoc } from 'firebase/firestore'
 import { db } from '../firebase'
 import { useAuth } from '../contexts/AuthContext'
+import { getFriendlyErrorMessage } from '../utils/friendlyErrors'
 import { formatCedi } from '../utils/currency'
 import type { CashierPaymentDetails } from '../utils/cashierPayment'
+import { resolveCustomerOrder, type OrderRefData } from '../utils/orderRefs'
 
 type OrderItem = {
   id: string
@@ -32,8 +34,6 @@ type OrderData = {
   customerInfo?: { name?: string; phone?: string; email?: string; address?: string }
 }
 
-type OrderRef = { ownerId: string; storeId: string; orderId: string; orderNumber: string; createdAt: string }
-
 export default function ViewOrder() {
   const { refId } = useParams<{ refId: string }>()
   const { user, loading: authLoading } = useAuth()
@@ -49,43 +49,40 @@ export default function ViewOrder() {
     let cancelled = false
     const refDoc = doc(db, 'users', user.uid, 'orderRefs', refId)
     getDoc(refDoc)
-      .then((refSnap) => {
-        if (cancelled || !refSnap.exists()) {
-          if (!refSnap.exists() && !cancelled) setError('Order not found.')
-          return undefined
-        }
-        const refData = refSnap.data() as OrderRef
-        const orderDoc = doc(db, 'users', refData.ownerId, 'stores', refData.storeId, 'websiteOrders', refData.orderId)
-        return getDoc(orderDoc).then((orderSnap) => ({ orderSnap, refData }))
-      })
-      .then((result) => {
-        if (cancelled || !result) return
-        const { orderSnap, refData } = result
-        if (!orderSnap.exists()) {
-          setError('Order not found.')
+      .then(async (refSnap) => {
+        if (cancelled) return
+        if (!refSnap.exists()) {
+          setError('This order was removed or is no longer available.')
           return
         }
-        const d = orderSnap.data()!
+        const refData = refSnap.data() as OrderRefData
+        const resolved = await resolveCustomerOrder(user.uid, refId, refData)
+        if (cancelled) return
+        if (!resolved) {
+          setError('This order was removed or is no longer available.')
+          return
+        }
+        const { summary, websiteOrder: d } = resolved
         setOrder({
-          orderNumber: refData.orderNumber ?? d.orderNumber,
-          items: (d.items ?? []) as OrderItem[],
-          total: Number(d.total ?? 0),
-          currency: d.currency,
-          status: String(d.status ?? 'pending'),
-          paymentMethod: d.paymentMethod,
-          paymentStatus: d.paymentStatus,
+          orderNumber: summary.orderNumber,
+          items: summary.items as OrderItem[],
+          total: summary.total,
+          currency: summary.currency,
+          status: summary.status,
+          paymentMethod: d.paymentMethod as string | undefined,
+          paymentStatus: d.paymentStatus as string | undefined,
           paidAmount: d.paidAmount != null ? Number(d.paidAmount) : undefined,
-          paymentReference: d.paymentReference,
-          paymentSenderName: d.paymentSenderName,
+          paymentReference: d.paymentReference as string | undefined,
+          paymentSenderName: d.paymentSenderName as string | undefined,
           amountSentByCustomer:
             d.amountSentByCustomer != null ? Number(d.amountSentByCustomer) : undefined,
           cashierPaymentDetails: d.cashierPaymentDetails as CashierPaymentDetails | undefined,
-          createdAt: d.createdAt ?? refData.createdAt,
-          customerInfo: d.customerInfo,
+          createdAt: summary.createdAt,
+          customerInfo: d.customerInfo as OrderData['customerInfo'],
         })
       })
       .catch((err) => {
-        if (!cancelled) setError(err instanceof Error ? err.message : 'Failed to load order')
+        if (!cancelled) setError(getFriendlyErrorMessage(err, 'general'))
       })
       .finally(() => {
         if (!cancelled) setLoading(false)

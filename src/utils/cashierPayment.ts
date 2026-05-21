@@ -140,7 +140,6 @@ export type WebsitePaymentTelegramInput = {
   cashierPaymentDetails?: CashierPaymentDetails
 }
 
-/** Title case for “Payment status: Paid.” line */
 function paymentStatusHeadline(status: string): string {
   const s = status.toLowerCase()
   if (s === 'paid') return 'Paid'
@@ -149,9 +148,40 @@ function paymentStatusHeadline(status: string): string {
   return s.charAt(0).toUpperCase() + s.slice(1)
 }
 
+/** e.g. Payment status: Paid✅ */
+function formatTelegramPaymentStatusLine(status: string): string {
+  const label = paymentStatusHeadline(status)
+  const s = status.toLowerCase()
+  if (s === 'paid') return `Payment status: ${label}✅`
+  return `Payment status: ${label}`
+}
+
+function formatTelegramDate(iso: string): string {
+  const d = new Date(iso)
+  if (Number.isNaN(d.getTime())) return '—'
+  return d.toLocaleString('en-GB', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: false,
+  })
+}
+
+function collectCustomerNotes(items: { cashierNote?: string }[]): string {
+  const notes = items.map((i) => i.cashierNote?.trim()).filter((n): n is string => Boolean(n))
+  return [...new Set(notes)].join(', ')
+}
+
+/** Item line total without ₵ prefix (e.g. “— 120”). */
+function formatTelegramItemTotal(amount: number): string {
+  return String(Math.round(amount))
+}
+
 /**
- * Payment block for Telegram — matches website / POS example:
- * Method → Payment status → Payment details (website) → Status, Paid Amount, Order total, reference, sender.
+ * Payment lines for Telegram (after items): Method, Payment status, Paid Amount, etc.
  */
 export function formatWebsitePaymentForTelegram(input: WebsitePaymentTelegramInput): string {
   const cpd = input.cashierPaymentDetails
@@ -166,15 +196,11 @@ export function formatWebsitePaymentForTelegram(input: WebsitePaymentTelegramInp
 
   const lines: string[] = []
   if (method) lines.push(`Method: ${method}`)
-  lines.push(`Payment status: ${paymentStatusHeadline(status)}.`)
-
-  lines.push('', 'Payment details (website)')
-  lines.push(`Status: ${status}`)
+  lines.push(formatTelegramPaymentStatusLine(status))
   lines.push(`Paid Amount: ${formatTelegramCedi(paidRaw)}`)
   lines.push(`Order total: ${formatTelegramCedi(totalRaw)}`)
   if (reference) lines.push(`Payment reference: ${reference}`)
-  if (sender) lines.push(`Sender name (MM): ${sender}`)
-
+  if (sender) lines.push(`Sender name: ${sender}`)
   return lines.join('\n')
 }
 
@@ -193,11 +219,16 @@ export function formatPaymentDetailsForTelegram(details: CashierPaymentDetails):
 
 type TelegramOrderArgs = {
   storeName: string
+  ownerId: string
   orderNumber: string
+  createdAt: string
   customerName: string
   customerPhone?: string
+  customerEmail?: string
+  customerAddress?: string
   items: { name: string; quantity: number; price: number; cashierNote?: string }[]
   total: number
+  currency: string
   paymentMethod: 'Mobile Money' | 'Cash'
   paymentStatus: string
   paidAmount: number
@@ -207,33 +238,52 @@ type TelegramOrderArgs = {
   cashierPaymentDetails: CashierPaymentDetails
 }
 
-/** Full Telegram body: store placing the order + items + POS-style payment block. */
-export function buildTelegramOrderNotification(args: TelegramOrderArgs): string {
-  const paymentBlock = formatWebsitePaymentForTelegram({
-    paymentMethod: args.paymentMethod,
-    paymentStatus: args.paymentStatus,
-    paidAmount: args.paidAmount,
-    orderTotal: args.orderTotal,
-    paymentReference: args.paymentReference,
-    paymentSenderName: args.paymentSenderName,
-    cashierPaymentDetails: args.cashierPaymentDetails,
-  })
+const TELEGRAM_ORDER_FOOTER =
+  '🤝verify all details before accepting and proceeding order thanks'
 
+/** Full Telegram body (POS-style layout). */
+export function buildTelegramOrderNotification(args: TelegramOrderArgs): string {
   const lines: string[] = [
-    '🛒 New website order',
+    '🛒 New online order',
     '',
-    `Store: ${args.storeName}`,
-    `Order: ${args.orderNumber}`,
-    `Customer: ${args.customerName}`,
+    `🏪 Shop: ${args.storeName}`,
+    `🆔 Shop UID: ${args.ownerId}`,
+    `📋 Order: #${args.orderNumber.replace(/^#+/, '')}`,
+    `📅 Date: ${formatTelegramDate(args.createdAt)}`,
+    '',
+    '👤 Customer',
+    `• Name: ${args.customerName}`,
+    `• Phone: ${args.customerPhone?.trim() || '—'}`,
+    `• Email: ${args.customerEmail?.trim() || '—'}`,
+    `• Address: ${args.customerAddress?.trim() || '—'}`,
   ]
-  if (args.customerPhone?.trim()) lines.push(`Phone: ${args.customerPhone.trim()}`)
-  lines.push('', 'Items:')
-  for (const it of args.items) {
-    let line = `• ${it.name} × ${it.quantity} — ${formatTelegramCedi(it.price * it.quantity)}`
-    if (it.cashierNote?.trim()) line += `\n  Note: ${it.cashierNote.trim()}`
-    lines.push(line)
+
+  const customerNote = collectCustomerNotes(args.items)
+  if (customerNote) {
+    lines.push(`📝Customer note: ${customerNote}`)
   }
-  lines.push('', `Total: ${formatTelegramCedi(args.total)}`)
-  lines.push('', paymentBlock)
+
+  lines.push('', '📦 Items')
+  for (const it of args.items) {
+    lines.push(
+      `• ${it.name} × ${it.quantity} — ${formatTelegramItemTotal(it.price * it.quantity)}`
+    )
+  }
+
+  lines.push('')
+  lines.push(
+    formatWebsitePaymentForTelegram({
+      paymentMethod: args.paymentMethod,
+      paymentStatus: args.paymentStatus,
+      paidAmount: args.paidAmount,
+      orderTotal: args.orderTotal,
+      paymentReference: args.paymentReference,
+      paymentSenderName: args.paymentSenderName,
+      cashierPaymentDetails: args.cashierPaymentDetails,
+    })
+  )
+
+  const cur = args.currency?.trim() || 'GHS'
+  lines.push('', `💰 Total: ${Math.round(args.total)} ${cur}`, '', TELEGRAM_ORDER_FOOTER)
   return lines.join('\n')
 }

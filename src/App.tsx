@@ -2,6 +2,7 @@ import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import { AuthProvider } from './contexts/AuthContext'
 import { CartProvider } from './contexts/CartContext'
 import { CartFlyProvider } from './contexts/CartFlyContext'
+import { FavoritesProvider } from './contexts/FavoritesContext'
 import Layout from './components/Layout'
 import GoogleAnalytics from './components/GoogleAnalytics'
 import Home from './pages/Home'
@@ -9,6 +10,7 @@ import ProductDetail from './pages/ProductDetail'
 import Cart from './pages/Cart'
 import Login from './pages/Login'
 import SignUp from './pages/SignUp'
+import Profile from './pages/Profile'
 import Checkout from './pages/Checkout'
 import OrderConfirmation from './pages/OrderConfirmation'
 import MyOrders from './pages/MyOrders'
@@ -23,6 +25,7 @@ export default function App() {
       <GoogleAnalytics />
       <AuthProvider>
         <CartProvider>
+          <FavoritesProvider>
           <CartFlyProvider>
           <Layout>
             <Routes>
@@ -31,6 +34,14 @@ export default function App() {
               <Route path="/cart" element={<Cart />} />
               <Route path="/login" element={<Login />} />
               <Route path="/signup" element={<SignUp />} />
+              <Route
+                path="/profile"
+                element={
+                  <PrivateRoute>
+                    <Profile />
+                  </PrivateRoute>
+                }
+              />
               <Route
                 path="/checkout"
                 element={
@@ -67,6 +78,7 @@ export default function App() {
             </Routes>
           </Layout>
           </CartFlyProvider>
+          </FavoritesProvider>
         </CartProvider>
       </AuthProvider>
     </BrowserRouter>

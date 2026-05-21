@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { formatCedi } from '../utils/currency'
 import { isValidImageUrl } from '../utils/productMapping'
+import FavoriteToggle from './FavoriteToggle'
 
 const STORAGE_KEY = 'applebazaar_category'
 const SUB_STORAGE_PREFIX = 'applebazaar_sub_'
@@ -68,6 +69,7 @@ export default function ProductCard({ product, persistPosition }: ProductCardPro
       state={product.storeLocations?.length ? { storeLocations: product.storeLocations } : undefined}
     >
       <div className="product-card-image">
+        <FavoriteToggle productId={product.id} className="product-card-favorite" />
         {showImage ? (
           <img
             src={src}

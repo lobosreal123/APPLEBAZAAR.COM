@@ -6,6 +6,7 @@ import { useCartFly, HEADER_CART_ID } from '../contexts/CartFlyContext'
 import { ShopCategoryProvider } from '../contexts/ShopCategoryContext'
 import { ShopCategoryToggle, ShopCategoryDrawer } from './ShopCategoryPanel'
 import { useAdmin } from '../hooks/useAdmin'
+import { useFavorites } from '../contexts/FavoritesContext'
 import type { ReactNode } from 'react'
 
 const SEARCH_DEBOUNCE_MS = 280
@@ -14,9 +15,11 @@ const WHATSAPP_URL = `https://wa.me/${WHATSAPP_NUMBER}`
 const WHATSAPP_QR_URL = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(WHATSAPP_URL)}`
 
 export default function Layout({ children }: { children: ReactNode }) {
-  const { user, loading, signOut } = useAuth()
+  const { user, profile, loading, signOut } = useAuth()
+  const profileLabel = profile?.username?.trim() || user?.email?.split('@')[0] || 'Profile'
   const { isAdmin } = useAdmin()
   const { totalItems } = useCart()
+  const { count: favoritesCount } = useFavorites()
   const { cartBump } = useCartFly()
   const navigate = useNavigate()
   const location = useLocation()
@@ -125,10 +128,27 @@ export default function Layout({ children }: { children: ReactNode }) {
             </form>
           </div>
           <nav className="app-nav" aria-label="Account and cart">
-            {user && (
-              <Link to="/my-orders" className="app-nav-extra">
-                My orders
+            {favoritesCount > 0 && (
+              <Link
+                to={
+                  location.pathname === '/' && searchParams.get('view') === 'favorites'
+                    ? '/'
+                    : { pathname: '/', search: '?view=favorites' }
+                }
+                className="app-nav-extra app-nav-favorites"
+              >
+                Favorites ({favoritesCount})
               </Link>
+            )}
+            {user && (
+              <>
+                <Link to="/profile" className="app-nav-extra app-nav-profile" title="My profile">
+                  {profileLabel}
+                </Link>
+                <Link to="/my-orders" className="app-nav-extra">
+                  My orders
+                </Link>
+              </>
             )}
             {user && isAdmin && (
               <Link to="/admin" className="app-nav-extra">
@@ -216,7 +236,14 @@ export default function Layout({ children }: { children: ReactNode }) {
             <Link to={shopTo}>Shop</Link>
             {' · '}
             <Link to="/cart">Cart</Link>
-            {user && <> · <Link to="/my-orders">My orders</Link></>}
+            {user && (
+              <>
+                {' · '}
+                <Link to="/profile">Profile</Link>
+                {' · '}
+                <Link to="/my-orders">My orders</Link>
+              </>
+            )}
           </p>
           <p style={{ marginTop: '1rem', opacity: 0.8 }}>© {new Date().getFullYear()} Applebazaar</p>
         </div>

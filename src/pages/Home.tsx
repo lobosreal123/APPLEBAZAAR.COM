@@ -1,8 +1,9 @@
-import { useEffect, useLayoutEffect, useRef } from 'react'
-import { useSearchParams } from 'react-router-dom'
+import { useEffect, useLayoutEffect, useRef, useMemo } from 'react'
+import { useSearchParams, Link } from 'react-router-dom'
 import { useProducts } from '../hooks/useProducts'
 import { useHotItems } from '../hooks/useHotItems'
 import { useShopCategory } from '../contexts/ShopCategoryContext'
+import { useFavorites } from '../contexts/FavoritesContext'
 import ProductCard from '../components/ProductCard'
 import {
   CATEGORY_TABS,
@@ -16,9 +17,11 @@ import { filterProductsBySearch } from '../utils/search'
 export default function Home() {
   const [searchParams] = useSearchParams()
   const searchQuery = searchParams.get('q') ?? ''
+  const favoritesOnly = searchParams.get('view') === 'favorites'
   const { products, loading, error } = useProducts()
   const { hotItemIds } = useHotItems()
   const { activeTab, effectiveSub } = useShopCategory()
+  const { favoriteIds, count: favoritesCount } = useFavorites()
 
   const pendingScrollY = useRef<number | null>(null)
 
@@ -51,6 +54,13 @@ export default function Home() {
       ? filterBySubCategory(byCategory, activeTab, effectiveSub)
       : byCategory
   const filtered = filterProductsBySearch(bySub, searchQuery)
+
+  const favoriteProducts = useMemo(() => {
+    const saved = inStockOnly.filter((p) => favoriteIds.has(p.id))
+    return filterProductsBySearch(saved, searchQuery).sort((a, b) => a.name.localeCompare(b.name))
+  }, [inStockOnly, favoriteIds, searchQuery])
+
+  const displayProducts = favoritesOnly ? favoriteProducts : filtered
 
   const hotItems = hotItemIds.length > 0
     ? hotItemIds
@@ -101,7 +111,7 @@ export default function Home() {
   return (
     <div className="home-layout">
       <div className="home-main">
-        {activeTab === 'all' && hotItems.length > 0 && (
+        {activeTab === 'all' && !favoritesOnly && hotItems.length > 0 && (
           <section className="home-hot-section">
             <h2 className="section-title hot-items-title">
               <span aria-hidden>🔥</span>{' '}
@@ -120,8 +130,30 @@ export default function Home() {
         )}
 
         <header className="home-inventory-header">
-          <h2 className="section-title home-inventory-title">Shop inventory</h2>
+          <h2 className="section-title home-inventory-title">
+            {favoritesOnly ? 'Your favorites' : 'Shop inventory'}
+          </h2>
+          {favoritesOnly && (
+            <p style={{ marginBottom: '0.75rem' }}>
+              <Link to="/" style={{ color: 'var(--accent)', fontSize: '0.9rem' }}>
+                ← Back to full shop
+              </Link>
+            </p>
+          )}
           <p className="home-inventory-active" aria-live="polite">
+            {favoritesOnly ? (
+              <>
+                Showing <strong>{favoriteProducts.length}</strong> saved item
+                {favoriteProducts.length === 1 ? '' : 's'}
+                {searchQuery ? (
+                  <>
+                    {' '}
+                    · search &ldquo;{searchQuery}&rdquo;
+                  </>
+                ) : null}
+              </>
+            ) : (
+              <>
             Showing: <strong>{activeCategoryLabel}</strong>
             {activeSubLabel ? (
               <>
@@ -135,17 +167,25 @@ export default function Home() {
                 · search &ldquo;{searchQuery}&rdquo;
               </>
             ) : null}
+              </>
+            )}
           </p>
         </header>
-        <div className="product-grid">
-          {filtered.length === 0 ? (
+        <div className={`product-grid${favoritesOnly ? ' favorites-grid' : ''}`}>
+          {displayProducts.length === 0 ? (
             <p className="home-empty" style={{ gridColumn: '1 / -1' }}>
-              {searchQuery
+              {favoritesOnly
+                ? favoritesCount === 0
+                  ? 'You have not saved any favorites yet. Tap ♡ on a product to save it here.'
+                  : searchQuery
+                    ? `No favorites match "${searchQuery}".`
+                    : 'Your saved favorites are out of stock or no longer available.'
+                : searchQuery
                 ? `No items match "${searchQuery}". Try a different search or category.`
                 : 'No items in this category right now.'}
             </p>
           ) : (
-            filtered.map((p) => (
+            displayProducts.map((p) => (
               <ProductCard
                 key={p.id}
                 product={p}
