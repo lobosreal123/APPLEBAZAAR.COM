@@ -29,7 +29,15 @@ Storefront that uses the **same Firestore inventory as your POS**: `users/{userI
    - Item images: the POS saves the **full download URL** in Firestore as `imageUrl` (e.g. `https://firebasestorage.googleapis.com/...`). The website uses that URL directly. The Storage object path (`users/uid/stores/storeId/item-images/...`) is only the location inside the bucket; it is not stored in Firestore.
    - Deploy **Storage rules** so the website can read item images: Firebase Console → Storage → Rules, paste `storage.rules`, or run `firebase deploy --only storage`.
 
-5. **Install and run**
+5. **Telegram on new orders (optional, from website)**
+   - Uses the same Firestore doc as POS: **`settings/telegram`** (`botToken`, `chatId`).
+   - After checkout, the site POSTs to a **PHP proxy** (`public/send-telegram.php`) because browsers cannot call Telegram directly.
+   - **Firebase Hosting / local Vite:** PHP does not run. Set in `.env`:
+     - `VITE_TELEGRAM_PROXY_URL=https://your-php-host.com/send-telegram.php` (e.g. your POS site URL).
+   - **cPanel / PHP host:** Deploy the built `dist` folder including `send-telegram.php`, or point `VITE_TELEGRAM_PROXY_URL` at that server.
+   - To avoid **duplicate** alerts, disable the online-order Telegram listener in POS `DataContext.jsx` if the website sends them.
+
+6. **Install and run**
    - `npm install`
    - `npm run dev`
 

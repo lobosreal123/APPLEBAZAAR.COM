@@ -6,21 +6,25 @@ import {
   useState,
   type ReactNode,
 } from 'react'
+import { newCartLineId } from '../utils/cartLineId'
 
 export type CartItem = {
+  cartLineId: string
   productId: string
   name: string
   price: number
   quantity: number
   imageUrl?: string
   maxStock: number
+  /** Customer preference shown to cashier (e.g. color). */
+  cashierNote?: string
 }
 
 type CartContextValue = {
   items: CartItem[]
-  addItem: (item: Omit<CartItem, 'quantity'> & { quantity?: number }) => void
-  removeItem: (productId: string) => void
-  updateQuantity: (productId: string, quantity: number) => void
+  addItem: (item: Omit<CartItem, 'quantity' | 'cartLineId'> & { quantity?: number; cashierNote?: string }) => void
+  removeItem: (cartLineId: string) => void
+  updateQuantity: (cartLineId: string, quantity: number) => void
   clearCart: () => void
   totalItems: number
   subtotal: number
@@ -33,7 +37,11 @@ const loadCart = (): CartItem[] => {
     const raw = localStorage.getItem(CART_STORAGE_KEY)
     if (!raw) return []
     const parsed = JSON.parse(raw)
-    return Array.isArray(parsed) ? parsed : []
+    if (!Array.isArray(parsed)) return []
+    return parsed.map((row: CartItem, idx: number) => ({
+      ...row,
+      cartLineId: row.cartLineId || `${row.productId}-${idx}`,
+    }))
   } catch {
     return []
   }
@@ -53,33 +61,47 @@ export function CartProvider({ children }: { children: ReactNode }) {
   }, [items])
 
   const addItem = useCallback(
-    (item: Omit<CartItem, 'quantity'> & { quantity?: number }) => {
+    (item: Omit<CartItem, 'quantity' | 'cartLineId'> & { quantity?: number; cashierNote?: string }) => {
       const qty = Math.min(item.quantity ?? 1, item.maxStock)
       if (qty < 1) return
+      const note = (item.cashierNote || '').trim()
       setItems((prev) => {
-        const existing = prev.find((i) => i.productId === item.productId)
+        const existing = prev.find(
+          (i) => i.productId === item.productId && (i.cashierNote || '').trim() === note
+        )
         if (existing) {
           const newQty = Math.min(existing.quantity + qty, item.maxStock)
-          if (newQty < 1) return prev.filter((i) => i.productId !== item.productId)
+          if (newQty < 1) return prev.filter((i) => i.cartLineId !== existing.cartLineId)
           return prev.map((i) =>
-            i.productId === item.productId ? { ...i, quantity: newQty, maxStock: item.maxStock } : i
+            i.cartLineId === existing.cartLineId
+              ? { ...i, quantity: newQty, maxStock: item.maxStock }
+              : i
           )
         }
-        return [...prev, { ...item, quantity: qty }]
+        const cashierNote = note || undefined
+        return [
+          ...prev,
+          {
+            ...item,
+            cartLineId: newCartLineId(),
+            quantity: qty,
+            cashierNote,
+          },
+        ]
       })
     },
     []
   )
 
-  const removeItem = useCallback((productId: string) => {
-    setItems((prev) => prev.filter((i) => i.productId !== productId))
+  const removeItem = useCallback((cartLineId: string) => {
+    setItems((prev) => prev.filter((i) => i.cartLineId !== cartLineId))
   }, [])
 
-  const updateQuantity = useCallback((productId: string, quantity: number) => {
+  const updateQuantity = useCallback((cartLineId: string, quantity: number) => {
     setItems((prev) =>
       prev
         .map((i) =>
-          i.productId === productId
+          i.cartLineId === cartLineId
             ? { ...i, quantity: Math.max(0, Math.min(quantity, i.maxStock)) }
             : i
         )

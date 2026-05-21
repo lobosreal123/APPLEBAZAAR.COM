@@ -6,6 +6,16 @@ import { useAuth } from '../contexts/AuthContext'
 import { useCart } from '../contexts/CartContext'
 import { getPosStoreConfigs, parseProductId } from '../config'
 import { formatCedi } from '../utils/currency'
+import {
+  buildCashierPaymentDetails,
+  buildTelegramOrderNotification,
+  formatPaymentDetailsForTelegram,
+  omitUndefined,
+  MOBILE_MONEY_NAME,
+  MOBILE_MONEY_NUMBER,
+} from '../utils/cashierPayment'
+import { resolveStoreDisplayName } from '../utils/resolveStoreName'
+import { notifyWebsiteOrderTelegram } from '../services/telegramNotify'
 
 const formStyle: React.CSSProperties = {
   maxWidth: 480,
@@ -16,16 +26,32 @@ const formStyle: React.CSSProperties = {
 
 const CURRENCY = 'GHS'
 
-const MOBILE_MONEY_NUMBER = '0544874507'
-const MOBILE_MONEY_NAME = 'Lobos iOS Unlocking Ventures or Ibrahim Mohammed'
-
 /** Group cart items by store (ownerId, storeId). Returns map keyed by "ownerId|storeId". */
+type CheckoutLine = {
+  id: string
+  name: string
+  price: number
+  quantity: number
+  imageUrl?: string
+  cashierNote?: string
+}
+
 function groupItemsByStore(
-  items: { productId: string; name: string; price: number; quantity: number; imageUrl?: string }[]
+  items: {
+    productId: string
+    name: string
+    price: number
+    quantity: number
+    imageUrl?: string
+    cashierNote?: string
+  }[]
 ) {
   const configs = getPosStoreConfigs()
   const firstStore = configs[0]
-  const groups = new Map<string, { ownerId: string; storeId: string; items: { id: string; name: string; price: number; quantity: number; imageUrl?: string }[]; total: number }>()
+  const groups = new Map<
+    string,
+    { ownerId: string; storeId: string; items: CheckoutLine[]; total: number }
+  >()
 
   for (const item of items) {
     const parsed = parseProductId(item.productId)
@@ -35,7 +61,14 @@ function groupItemsByStore(
     const key = `${ownerId}|${storeId}`
     if (!ownerId || !storeId) continue
     const existing = groups.get(key)
-    const line = { id: docId, name: item.name, price: item.price, quantity: item.quantity, imageUrl: item.imageUrl }
+    const line: CheckoutLine = {
+      id: docId,
+      name: item.name,
+      price: item.price,
+      quantity: item.quantity,
+      imageUrl: item.imageUrl,
+      ...(item.cashierNote?.trim() && { cashierNote: item.cashierNote.trim() }),
+    }
     const lineTotal = item.price * item.quantity
     if (existing) {
       existing.items.push(line)
@@ -142,8 +175,20 @@ export default function Checkout() {
         amountSentTotal = v.amountSent
       }
 
+      const storeNameByKey = new Map<string, string>()
+      await Promise.all(
+        storeOrders.map(async ({ ownerId, storeId }) => {
+          const key = `${ownerId}|${storeId}`
+          if (storeNameByKey.has(key)) return
+          const name = await resolveStoreDisplayName(ownerId, storeId)
+          storeNameByKey.set(key, name)
+        })
+      )
+
       for (let i = 0; i < storeOrders.length; i++) {
         const { ownerId, storeId, items: storeItems, total } = storeOrders[i]
+        const storeKey = `${ownerId}|${storeId}`
+        const storeName = storeNameByKey.get(storeKey) ?? 'Shop'
         const orderNumber = storeOrders.length > 1 ? `${baseOrderNumber}-${i + 1}` : baseOrderNumber
         const orderTotal = Math.round(total * 100) / 100
         const orderRatio = storeOrders.length === 1 ? 1 : orderTotal / subtotal
@@ -159,6 +204,7 @@ export default function Checkout() {
             price: it.price,
             quantity: it.quantity,
             ...(it.imageUrl && { imageUrl: it.imageUrl }),
+            ...(it.cashierNote && { cashierNote: it.cashierNote }),
           })),
           total: orderTotal,
           currency: CURRENCY,
@@ -174,9 +220,42 @@ export default function Checkout() {
         if (paymentMethod === 'Mobile Money') {
           orderPayload.paymentReference = (mobileMoney.paymentReference || '').trim()
           orderPayload.paymentSenderName = (mobileMoney.senderName || '').trim()
+          orderPayload.amountSentByCustomer = amountSentTotal
         }
+        const cashierPaymentDetails = buildCashierPaymentDetails({
+          paymentMethod,
+          orderTotal,
+          paidAmount,
+          cartSubtotal: subtotal,
+          currency: CURRENCY,
+          mobileMoney:
+            paymentMethod === 'Mobile Money'
+              ? {
+                  paymentReference: (mobileMoney.paymentReference || '').trim(),
+                  senderName: (mobileMoney.senderName || '').trim(),
+                  amountSentTotal,
+                }
+              : undefined,
+        })
+        const telegramPaymentText = formatPaymentDetailsForTelegram(cashierPaymentDetails)
+        orderPayload.ownerId = ownerId
+        orderPayload.storeId = storeId
+        orderPayload.storeName = storeName
+        orderPayload.shopName = storeName
+        orderPayload.cashierPaymentDetails = cashierPaymentDetails
+        orderPayload.telegramPaymentText = telegramPaymentText
+        orderPayload.telegramNotificationText = buildTelegramOrderNotification({
+          storeName,
+          orderNumber,
+          customerName: (customerInfo.name as string) || 'Customer',
+          customerPhone: customerInfo.phone as string | undefined,
+          items: storeItems,
+          total: orderTotal,
+          currency: CURRENCY,
+          paymentText: telegramPaymentText,
+        })
         const ordersRef = collection(db, 'users', ownerId, 'stores', storeId, 'websiteOrders')
-        const docRef = await addDoc(ordersRef, orderPayload)
+        const docRef = await addDoc(ordersRef, omitUndefined(orderPayload))
         const customerOrderRefs = collection(db, 'users', user.uid, 'orderRefs')
         await addDoc(customerOrderRefs, {
           ownerId,
@@ -184,6 +263,11 @@ export default function Checkout() {
           orderId: docRef.id,
           orderNumber,
           createdAt: new Date().toISOString(),
+        })
+
+        void notifyWebsiteOrderTelegram({
+          ...orderPayload,
+          id: docRef.id,
         })
       }
 
@@ -383,8 +467,13 @@ export default function Checkout() {
           <h2 style={{ fontSize: '1.1rem', margin: '0 0 0.5rem' }}>Order summary</h2>
           <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
             {items.map((i) => (
-              <li key={i.productId} style={{ padding: '0.25rem 0', borderBottom: '1px solid var(--border)' }}>
-                {i.name} × {i.quantity} — {formatCedi(i.price * i.quantity)}
+              <li key={i.cartLineId} style={{ padding: '0.35rem 0', borderBottom: '1px solid var(--border)' }}>
+                <div>{i.name} × {i.quantity} — {formatCedi(i.price * i.quantity)}</div>
+                {i.cashierNote && (
+                  <div className="checkout-cashier-note">
+                    <span className="checkout-cashier-note-label">Note for cashier:</span> {i.cashierNote}
+                  </div>
+                )}
               </li>
             ))}
           </ul>

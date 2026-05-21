@@ -34,7 +34,7 @@ export default function Cart() {
           </thead>
           <tbody>
             {items.map((item) => (
-              <tr key={item.productId}>
+              <tr key={item.cartLineId}>
                 <td>
                   {item.imageUrl && isValidImageUrl(item.imageUrl) && (
                     <img
@@ -43,7 +43,15 @@ export default function Cart() {
                       style={{ width: 48, height: 48, objectFit: 'cover', marginRight: 10, verticalAlign: 'middle', borderRadius: 4 }}
                     />
                   )}
-                  {item.name}
+                  <div className="cart-item-name-cell">
+                    <span>{item.name}</span>
+                    {item.cashierNote && (
+                      <span className="cart-cashier-note">
+                        <span className="cart-cashier-note-label">Note for cashier</span>
+                        {item.cashierNote}
+                      </span>
+                    )}
+                  </div>
                 </td>
                 <td style={{ textAlign: 'right' }}>{formatCedi(item.price)}</td>
                 <td style={{ textAlign: 'center' }}>
@@ -52,12 +60,12 @@ export default function Cart() {
                     min={1}
                     max={item.maxStock}
                     value={item.quantity}
-                    onChange={(e) => updateQuantity(item.productId, parseInt(e.target.value, 10) || 0)}
+                    onChange={(e) => updateQuantity(item.cartLineId, parseInt(e.target.value, 10) || 0)}
                   />
                 </td>
                 <td style={{ textAlign: 'right' }}>{formatCedi(item.price * item.quantity)}</td>
                 <td>
-                  <button type="button" className="btn-outline" onClick={() => removeItem(item.productId)} style={{ fontSize: '0.875rem', padding: '0.35rem 0.6rem' }}>
+                  <button type="button" className="btn-outline" onClick={() => removeItem(item.cartLineId)} style={{ fontSize: '0.875rem', padding: '0.35rem 0.6rem' }}>
                     Remove
                   </button>
                 </td>

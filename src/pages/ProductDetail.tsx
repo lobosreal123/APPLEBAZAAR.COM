@@ -10,6 +10,7 @@ import { getProductImageUrl, type Product } from '../components/ProductCard'
 import { getImageUrls, isValidImageUrl } from '../utils/productMapping'
 import { formatCedi } from '../utils/currency'
 import ImageLightbox from '../components/ImageLightbox'
+import AddToCartPreferenceModal from '../components/AddToCartPreferenceModal'
 import { getItemDisplayCategory } from '../utils/categoryFilter'
 
 function mapInventoryToProduct(id: string, data: Record<string, unknown>): Product {
@@ -50,6 +51,7 @@ export default function ProductDetail() {
   const [selectedIndex, setSelectedIndex] = useState(0)
   const [failedIndices, setFailedIndices] = useState<Set<number>>(new Set())
   const [lightboxOpen, setLightboxOpen] = useState(false)
+  const [preferenceModalOpen, setPreferenceModalOpen] = useState(false)
   const [storeNames, setStoreNames] = useState<string[]>([])
   const { addItem } = useCart()
   const navigate = useNavigate()
@@ -221,8 +223,13 @@ export default function ProductDetail() {
 
   const inStock = product.stock >= 1
 
-  const handleAddToCart = () => {
+  const handleAddToCartClick = () => {
     if (!inStock) return
+    setPreferenceModalOpen(true)
+  }
+
+  const handlePreferenceConfirm = (cashierNote: string | null) => {
+    if (!product || !inStock) return
     addItem({
       productId: product.id,
       name: product.name,
@@ -230,7 +237,9 @@ export default function ProductDetail() {
       imageUrl: getProductImageUrl(product),
       maxStock: product.stock,
       quantity: 1,
+      cashierNote: cashierNote ?? undefined,
     })
+    setPreferenceModalOpen(false)
   }
 
   const mainUrl = urls[selectedIndex]
@@ -352,12 +361,20 @@ export default function ProductDetail() {
         <button
           type="button"
           className="btn-primary"
-          onClick={handleAddToCart}
+          onClick={handleAddToCartClick}
           disabled={!inStock}
         >
           {inStock ? 'Add to cart' : 'Out of stock'}
         </button>
       </div>
+
+      <AddToCartPreferenceModal
+        open={preferenceModalOpen}
+        productName={product.name || 'Product'}
+        listedSpecs={[product.color, product.storage].filter(Boolean).join(' · ') || undefined}
+        onConfirm={handlePreferenceConfirm}
+        onClose={() => setPreferenceModalOpen(false)}
+      />
 
       {lightboxOpen && urls.length > 0 && (
         <ImageLightbox

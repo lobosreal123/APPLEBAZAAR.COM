@@ -5,8 +5,16 @@ import { doc, getDoc } from 'firebase/firestore'
 import { db } from '../firebase'
 import { useAuth } from '../contexts/AuthContext'
 import { formatCedi } from '../utils/currency'
+import type { CashierPaymentDetails } from '../utils/cashierPayment'
 
-type OrderItem = { id: string; name: string; price: number; quantity: number; imageUrl?: string }
+type OrderItem = {
+  id: string
+  name: string
+  price: number
+  quantity: number
+  imageUrl?: string
+  cashierNote?: string
+}
 type OrderData = {
   orderNumber?: string
   items: OrderItem[]
@@ -16,6 +24,10 @@ type OrderData = {
   paymentMethod?: string
   paymentStatus?: string
   paidAmount?: number
+  paymentReference?: string
+  paymentSenderName?: string
+  amountSentByCustomer?: number
+  cashierPaymentDetails?: CashierPaymentDetails
   createdAt: string | { toDate?: () => Date }
   customerInfo?: { name?: string; phone?: string; email?: string; address?: string }
 }
@@ -63,6 +75,11 @@ export default function ViewOrder() {
           paymentMethod: d.paymentMethod,
           paymentStatus: d.paymentStatus,
           paidAmount: d.paidAmount != null ? Number(d.paidAmount) : undefined,
+          paymentReference: d.paymentReference,
+          paymentSenderName: d.paymentSenderName,
+          amountSentByCustomer:
+            d.amountSentByCustomer != null ? Number(d.amountSentByCustomer) : undefined,
+          cashierPaymentDetails: d.cashierPaymentDetails as CashierPaymentDetails | undefined,
           createdAt: d.createdAt ?? refData.createdAt,
           customerInfo: d.customerInfo,
         })
@@ -106,14 +123,32 @@ export default function ViewOrder() {
       <div style={{ border: '1px solid var(--border)', borderRadius: 8, padding: '1.25rem', marginBottom: '1rem' }}>
         <p style={{ margin: '0 0 0.5rem', fontSize: '0.875rem', color: 'var(--text-muted)' }}>Placed {formatDate(order.createdAt)}</p>
         <p style={{ margin: 0, fontWeight: 600 }}>Status: {order.status}</p>
-        {order.paymentMethod && (
-          <p style={{ margin: '0.5rem 0 0', fontSize: '0.875rem' }}>
-            Payment: {order.paymentMethod}
-            {order.paymentStatus && ` · ${order.paymentStatus}`}
-            {order.paidAmount != null && order.paidAmount > 0 && ` · ${order.currency === 'GHS' ? formatCedi(order.paidAmount) : `$${order.paidAmount.toFixed(2)}`} paid`}
-          </p>
-        )}
       </div>
+      {(order.cashierPaymentDetails?.summaryLines?.length || order.paymentMethod) && (
+        <section className="order-payment-cashier" aria-label="Payment details for cashier">
+          <h2 className="order-payment-cashier-title">Payment details (for cashier)</h2>
+          {order.cashierPaymentDetails?.summaryLines?.length ? (
+            <ul className="order-payment-cashier-list">
+              {order.cashierPaymentDetails.summaryLines.map((line, i) => (
+                <li key={i}>{line}</li>
+              ))}
+            </ul>
+          ) : (
+            <div className="order-payment-cashier-fallback">
+              {order.paymentMethod && <p>Method: {order.paymentMethod}</p>}
+              {order.paymentStatus && <p>Status: {order.paymentStatus}</p>}
+              {order.paidAmount != null && order.paidAmount > 0 && (
+                <p>Amount paid: {order.currency === 'GHS' ? formatCedi(order.paidAmount) : order.paidAmount}</p>
+              )}
+              {order.paymentReference && <p>Reference: {order.paymentReference}</p>}
+              {order.paymentSenderName && <p>Sender: {order.paymentSenderName}</p>}
+              {order.amountSentByCustomer != null && order.amountSentByCustomer > 0 && (
+                <p>Total sent: {formatCedi(order.amountSentByCustomer)}</p>
+              )}
+            </div>
+          )}
+        </section>
+      )}
       <h2 style={{ fontSize: '1rem', margin: '0 0 0.5rem' }}>Items</h2>
       <ul style={{ listStyle: 'none', padding: 0, margin: '0 0 1rem', border: '1px solid var(--border)', borderRadius: 8, overflow: 'hidden' }}>
         {order.items.map((item, idx) => (
@@ -138,7 +173,14 @@ export default function ViewOrder() {
               ) : (
                 <div style={{ width: 48, height: 48, borderRadius: 6, background: 'var(--bg-subtle)', flexShrink: 0 }} aria-hidden />
               )}
-              <span>{item.name} × {item.quantity}</span>
+              <span>
+                {item.name} × {item.quantity}
+                {item.cashierNote && (
+                  <span className="order-cashier-note">
+                    <span className="order-cashier-note-label">Note for cashier:</span> {item.cashierNote}
+                  </span>
+                )}
+              </span>
             </div>
             <span style={{ flexShrink: 0 }}>{order.currency === 'GHS' ? formatCedi(item.price * item.quantity) : `$${(item.price * item.quantity).toFixed(2)}`}</span>
           </li>
