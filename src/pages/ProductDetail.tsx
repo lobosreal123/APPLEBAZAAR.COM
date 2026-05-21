@@ -1,9 +1,10 @@
-import { useState, useEffect, useMemo, useCallback } from 'react'
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import { useSwipe } from '../hooks/useSwipe'
 import { useParams, useNavigate, useLocation, Link } from 'react-router-dom'
 import { doc, getDoc } from 'firebase/firestore'
 import { db } from '../firebase'
 import { useCart } from '../contexts/CartContext'
+import { useCartFly } from '../contexts/CartFlyContext'
 import { useProducts } from '../hooks/useProducts'
 import { getPosInventoryPath, parseProductId } from '../config'
 import { getProductImageUrl, type Product } from '../components/ProductCard'
@@ -54,6 +55,8 @@ export default function ProductDetail() {
   const [preferenceModalOpen, setPreferenceModalOpen] = useState(false)
   const [storeNames, setStoreNames] = useState<string[]>([])
   const { addItem } = useCart()
+  const { playFlyToCart } = useCartFly()
+  const flySourceRef = useRef<HTMLDivElement>(null)
   const navigate = useNavigate()
   const location = useLocation()
   const storeLocationsFromState = (location.state as { storeLocations?: { ownerId: string; storeId: string }[] })?.storeLocations
@@ -230,6 +233,7 @@ export default function ProductDetail() {
 
   const handlePreferenceConfirm = (cashierNote: string | null) => {
     if (!product || !inStock) return
+    playFlyToCart(flySourceRef.current, getProductImageUrl(product))
     addItem({
       productId: product.id,
       name: product.name,
@@ -263,6 +267,7 @@ export default function ProductDetail() {
       )}
       <div className="product-detail-gallery">
         <div
+          ref={flySourceRef}
           className="product-detail-image"
           onTouchStart={urls.length > 1 ? gallerySwipe.onTouchStart : undefined}
           onTouchEnd={urls.length > 1 ? gallerySwipe.onTouchEnd : undefined}

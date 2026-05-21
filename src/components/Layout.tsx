@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { Link, useNavigate, useLocation, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { useCart } from '../contexts/CartContext'
+import { useCartFly, HEADER_CART_ID } from '../contexts/CartFlyContext'
 import { ShopCategoryProvider } from '../contexts/ShopCategoryContext'
 import { ShopCategoryToggle, ShopCategoryDrawer } from './ShopCategoryPanel'
 import { useAdmin } from '../hooks/useAdmin'
@@ -16,6 +17,7 @@ export default function Layout({ children }: { children: ReactNode }) {
   const { user, loading, signOut } = useAuth()
   const { isAdmin } = useAdmin()
   const { totalItems } = useCart()
+  const { cartBump } = useCartFly()
   const navigate = useNavigate()
   const location = useLocation()
   const [searchParams, setSearchParams] = useSearchParams()
@@ -143,7 +145,11 @@ export default function Layout({ children }: { children: ReactNode }) {
               >
                 Contact support <span className="app-nav-support-wa">(WhatsApp)</span>
               </button>
-              <Link to="/cart" className="btn-cart">
+              <Link
+                to="/cart"
+                id={HEADER_CART_ID}
+                className={`btn-cart${cartBump ? ' cart-land-bounce' : ''}`}
+              >
                 Cart{totalItems > 0 ? ` (${totalItems})` : ''}
               </Link>
               {!loading &&

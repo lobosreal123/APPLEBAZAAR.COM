@@ -1,6 +1,7 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import { AuthProvider } from './contexts/AuthContext'
 import { CartProvider } from './contexts/CartContext'
+import { CartFlyProvider } from './contexts/CartFlyContext'
 import Layout from './components/Layout'
 import GoogleAnalytics from './components/GoogleAnalytics'
 import Home from './pages/Home'
@@ -22,6 +23,7 @@ export default function App() {
       <GoogleAnalytics />
       <AuthProvider>
         <CartProvider>
+          <CartFlyProvider>
           <Layout>
             <Routes>
               <Route path="/" element={<Home />} />
@@ -64,6 +66,7 @@ export default function App() {
               />
             </Routes>
           </Layout>
+          </CartFlyProvider>
         </CartProvider>
       </AuthProvider>
     </BrowserRouter>

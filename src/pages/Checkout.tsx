@@ -9,7 +9,7 @@ import { formatCedi } from '../utils/currency'
 import {
   buildCashierPaymentDetails,
   buildTelegramOrderNotification,
-  formatPaymentDetailsForTelegram,
+  formatWebsitePaymentForTelegram,
   omitUndefined,
   MOBILE_MONEY_NAME,
   MOBILE_MONEY_NUMBER,
@@ -237,7 +237,19 @@ export default function Checkout() {
                 }
               : undefined,
         })
-        const telegramPaymentText = formatPaymentDetailsForTelegram(cashierPaymentDetails)
+        const telegramPaymentText = formatWebsitePaymentForTelegram({
+          paymentMethod,
+          paymentStatus: orderPayload.paymentStatus as string,
+          paidAmount,
+          orderTotal,
+          paymentReference:
+            paymentMethod === 'Mobile Money'
+              ? (mobileMoney.paymentReference || '').trim()
+              : undefined,
+          paymentSenderName:
+            paymentMethod === 'Mobile Money' ? (mobileMoney.senderName || '').trim() : undefined,
+          cashierPaymentDetails,
+        })
         orderPayload.ownerId = ownerId
         orderPayload.storeId = storeId
         orderPayload.storeName = storeName
@@ -251,8 +263,17 @@ export default function Checkout() {
           customerPhone: customerInfo.phone as string | undefined,
           items: storeItems,
           total: orderTotal,
-          currency: CURRENCY,
-          paymentText: telegramPaymentText,
+          paymentMethod,
+          paymentStatus: orderPayload.paymentStatus as string,
+          paidAmount,
+          orderTotal,
+          paymentReference:
+            paymentMethod === 'Mobile Money'
+              ? (mobileMoney.paymentReference || '').trim()
+              : undefined,
+          paymentSenderName:
+            paymentMethod === 'Mobile Money' ? (mobileMoney.senderName || '').trim() : undefined,
+          cashierPaymentDetails,
         })
         const ordersRef = collection(db, 'users', ownerId, 'stores', storeId, 'websiteOrders')
         const docRef = await addDoc(ordersRef, omitUndefined(orderPayload))

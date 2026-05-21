@@ -35,7 +35,7 @@ Storefront that uses the **same Firestore inventory as your POS**: `users/{userI
    - **Firebase Hosting / local Vite:** PHP does not run. Set in `.env`:
      - `VITE_TELEGRAM_PROXY_URL=https://your-php-host.com/send-telegram.php` (e.g. your POS site URL).
    - **cPanel / PHP host:** Deploy the built `dist` folder including `send-telegram.php`, or point `VITE_TELEGRAM_PROXY_URL` at that server.
-   - To avoid **duplicate** alerts, disable the online-order Telegram listener in POS `DataContext.jsx` if the website sends them.
+   - POS does **not** send Telegram for new website orders (only the website does), so you should not get duplicate messages.
 
 6. **Install and run**
    - `npm install`
