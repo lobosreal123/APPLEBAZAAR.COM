@@ -4,6 +4,9 @@
  *
  * Flow: `src/pages/Checkout.tsx` → after `addDoc(websiteOrders)` → `notifyWebsiteOrderTelegram`
  * uses `telegramNotificationText` built in `src/utils/cashierPayment.ts`.
+ *
+ * Chat IDs: per-store list at `users/{ownerId}/onlineOrderTelegramReceivers/config` (POS Admin → Payments).
+ * Bot token: global `settings/telegram`. Falls back to `settings/telegram.chatId` if no per-store receivers.
  */
 import { doc, getDoc } from 'firebase/firestore'
 import { db } from '../firebase'
@@ -11,6 +14,12 @@ import { db } from '../firebase'
 export type TelegramSettings = {
   botToken: string
   chatId: string
+}
+
+export type OnlineOrderTelegramReceiver = {
+  storeId: string
+  storeName?: string
+  telegramChatId: string
 }
 
 function getTelegramProxyUrl(): string {
@@ -21,6 +30,8 @@ function getTelegramProxyUrl(): string {
   }
   return '/send-telegram.php'
 }
+
+const normId = (id: unknown) => String(id ?? '').trim()
 
 export async function getTelegramSettings(): Promise<TelegramSettings | null> {
   try {
@@ -35,6 +46,38 @@ export async function getTelegramSettings(): Promise<TelegramSettings | null> {
     console.warn('[Telegram] Could not load settings/telegram:', err)
     return null
   }
+}
+
+/** Per-store online order receivers (configured in POS Admin → Payments). */
+export async function getOnlineOrderTelegramReceivers(
+  ownerId: string
+): Promise<OnlineOrderTelegramReceiver[]> {
+  const oid = normId(ownerId)
+  if (!oid) return []
+  try {
+    const snap = await getDoc(doc(db, 'users', oid, 'onlineOrderTelegramReceivers', 'config'))
+    if (!snap.exists()) return []
+    const receivers = snap.data()?.receivers
+    return Array.isArray(receivers) ? receivers : []
+  } catch (err) {
+    console.warn('[Telegram] Could not load online order receivers:', err)
+    return []
+  }
+}
+
+/** Chat IDs for a store’s online orders (deduped). Empty if none configured for that store. */
+export async function getOnlineOrderTelegramChatIds(
+  ownerId: string,
+  storeId: string
+): Promise<string[]> {
+  const sid = normId(storeId)
+  if (!sid) return []
+  const receivers = await getOnlineOrderTelegramReceivers(ownerId)
+  const chatIds = receivers
+    .filter((r) => normId(r.storeId) === sid)
+    .map((r) => normId(r.telegramChatId))
+    .filter(Boolean)
+  return [...new Set(chatIds)]
 }
 
 type SendOptions = {
@@ -101,14 +144,15 @@ export async function sendTelegramMessage(
 
 /**
  * Notify Telegram after a website order is saved. Uses telegramNotificationText on the order.
+ * Sends to per-store online order receivers (POS Admin → Payments), not payment approvers.
  * Does not throw — checkout should succeed even if Telegram fails.
  */
 export async function notifyWebsiteOrderTelegram(
   order: Record<string, unknown>
 ): Promise<{ success: boolean; skipped?: boolean; error?: string }> {
   const settings = await getTelegramSettings()
-  if (!settings) {
-    return { success: false, skipped: true, error: 'Telegram not configured (settings/telegram)' }
+  if (!settings?.botToken) {
+    return { success: false, skipped: true, error: 'Telegram not configured (settings/telegram botToken)' }
   }
 
   const text = String(order.telegramNotificationText ?? '').trim()
@@ -116,11 +160,32 @@ export async function notifyWebsiteOrderTelegram(
     return { success: false, skipped: true, error: 'No telegramNotificationText on order' }
   }
 
-  const result = await sendTelegramMessage(settings.botToken, settings.chatId, text, {
-    parseMode: '',
-  })
-  if (!result.success) {
-    console.warn('[Telegram] Website order notification failed:', result.error)
+  const ownerId = normId(order.ownerId)
+  const storeId = normId(order.storeId)
+  let chatIds = ownerId && storeId ? await getOnlineOrderTelegramChatIds(ownerId, storeId) : []
+  if (chatIds.length === 0 && settings.chatId) {
+    chatIds = [settings.chatId]
   }
-  return result
+  if (chatIds.length === 0) {
+    return {
+      success: false,
+      skipped: true,
+      error:
+        'No online order Telegram receivers for this store (POS Admin → Payments → Telegram online orders)',
+    }
+  }
+
+  let anySuccess = false
+  let lastError: string | undefined
+  for (const chatId of chatIds) {
+    const result = await sendTelegramMessage(settings.botToken, chatId, text, { parseMode: '' })
+    if (result.success) anySuccess = true
+    else lastError = result.error
+  }
+
+  if (!anySuccess) {
+    console.warn('[Telegram] Website order notification failed:', lastError)
+    return { success: false, error: lastError || 'Telegram send failed' }
+  }
+  return { success: true }
 }

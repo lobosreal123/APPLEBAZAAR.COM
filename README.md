@@ -30,7 +30,7 @@ Storefront that uses the **same Firestore inventory as your POS**: `users/{userI
    - Deploy **Storage rules** so the website can read item images: Firebase Console → Storage → Rules, paste `storage.rules`, or run `firebase deploy --only storage`.
 
 5. **Telegram on new orders (optional, from website)**
-   - Uses the same Firestore doc as POS: **`settings/telegram`** (`botToken`, `chatId`).
+   - Bot token: **`settings/telegram`** (`botToken`). Online-order chat IDs: **`users/{ownerId}/onlineOrderTelegramReceivers/config`** (configure in POS Admin → Payments → *Telegram online orders*). Falls back to `settings/telegram.chatId` if none set for that store.
    - After checkout, the site POSTs to a **PHP proxy** (`public/send-telegram.php`) because browsers cannot call Telegram directly.
    - **Firebase Hosting / local Vite:** PHP does not run. Set in `.env`:
      - `VITE_TELEGRAM_PROXY_URL=https://your-php-host.com/send-telegram.php` (e.g. your POS site URL).

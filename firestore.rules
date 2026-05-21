@@ -189,6 +189,12 @@ service cloud.firestore {
         allow get: if settingId == 'app';
         allow read, write: if isAuthenticated() && request.auth.uid == userId;
       }
+
+      // Online order Telegram receivers (POS Admin → Payments; website reads config at checkout)
+      match /onlineOrderTelegramReceivers/{docId} {
+        allow read: if docId == 'config';
+        allow write: if isAuthenticated() && request.auth.uid == userId;
+      }
       
       // Catch-all for any other subcollections
       match /{document=**} {
