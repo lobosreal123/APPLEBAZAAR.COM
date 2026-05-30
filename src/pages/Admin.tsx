@@ -98,7 +98,7 @@ export default function Admin() {
               <>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem', marginBottom: '1rem', alignItems: 'center' }}>
                   <span style={{ fontSize: '0.9rem', fontWeight: 500 }}>Category:</span>
-                  {(['all', 'devices', 'accessories', 'screens', 'custom'] as const).map((cat) => (
+                  {(['all', 'devices', 'accessories', 'screens', 'custom', 'iphone-box'] as const).map((cat) => (
                     <button
                       key={cat}
                       type="button"

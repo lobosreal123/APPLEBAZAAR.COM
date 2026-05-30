@@ -18,7 +18,8 @@ const SUB_STORAGE_PREFIX = 'applebazaar_sub_'
 function getStoredCategory(): CategoryTab {
   try {
     const s = sessionStorage.getItem(STORAGE_KEY)
-    if (s && ['all', 'devices', 'accessories', 'screens', 'custom'].includes(s)) return s as CategoryTab
+    if (s && ['all', 'devices', 'accessories', 'screens', 'custom', 'iphone-box'].includes(s))
+      return s as CategoryTab
   } catch {
     /* ignore */
   }
