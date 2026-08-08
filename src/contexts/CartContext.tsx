@@ -18,11 +18,22 @@ export type CartItem = {
   maxStock: number
   /** Customer preference shown to cashier (e.g. color). */
   cashierNote?: string
+  /** POS named price option label (e.g. Retail, Wholesale). */
+  priceName?: string
+  /** Minimum order quantity for this price option. */
+  moq?: number
 }
 
 type CartContextValue = {
   items: CartItem[]
-  addItem: (item: Omit<CartItem, 'quantity' | 'cartLineId'> & { quantity?: number; cashierNote?: string }) => void
+  addItem: (
+    item: Omit<CartItem, 'quantity' | 'cartLineId'> & {
+      quantity?: number
+      cashierNote?: string
+      priceName?: string
+      moq?: number
+    }
+  ) => void
   removeItem: (cartLineId: string) => void
   updateQuantity: (cartLineId: string, quantity: number) => void
   clearCart: () => void
@@ -51,6 +62,11 @@ const saveCart = (items: CartItem[]) => {
   localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(items))
 }
 
+const sameLine = (a: CartItem, b: { productId: string; cashierNote?: string; priceName?: string }) =>
+  a.productId === b.productId &&
+  (a.cashierNote || '').trim() === (b.cashierNote || '').trim() &&
+  (a.priceName || '') === (b.priceName || '')
+
 const CartContext = createContext<CartContextValue | null>(null)
 
 export function CartProvider({ children }: { children: ReactNode }) {
@@ -61,31 +77,47 @@ export function CartProvider({ children }: { children: ReactNode }) {
   }, [items])
 
   const addItem = useCallback(
-    (item: Omit<CartItem, 'quantity' | 'cartLineId'> & { quantity?: number; cashierNote?: string }) => {
-      const qty = Math.min(item.quantity ?? 1, item.maxStock)
+    (
+      item: Omit<CartItem, 'quantity' | 'cartLineId'> & {
+        quantity?: number
+        cashierNote?: string
+        priceName?: string
+        moq?: number
+      }
+    ) => {
+      const moq = item.moq && item.moq > 0 ? item.moq : 1
+      const qty = Math.min(Math.max(item.quantity ?? moq, moq), item.maxStock)
       if (qty < 1) return
       const note = (item.cashierNote || '').trim()
+      const priceName = (item.priceName || '').trim() || undefined
       setItems((prev) => {
-        const existing = prev.find(
-          (i) => i.productId === item.productId && (i.cashierNote || '').trim() === note
+        const existing = prev.find((i) =>
+          sameLine(i, { productId: item.productId, cashierNote: note, priceName })
         )
         if (existing) {
-          const newQty = Math.min(existing.quantity + qty, item.maxStock)
+          const newQty = Math.min(Math.max(existing.quantity + qty, moq), item.maxStock)
           if (newQty < 1) return prev.filter((i) => i.cartLineId !== existing.cartLineId)
           return prev.map((i) =>
             i.cartLineId === existing.cartLineId
-              ? { ...i, quantity: newQty, maxStock: item.maxStock }
+              ? {
+                  ...i,
+                  quantity: newQty,
+                  maxStock: item.maxStock,
+                  price: item.price,
+                  priceName,
+                  moq: item.moq,
+                }
               : i
           )
         }
-        const cashierNote = note || undefined
         return [
           ...prev,
           {
             ...item,
             cartLineId: newCartLineId(),
             quantity: qty,
-            cashierNote,
+            cashierNote: note || undefined,
+            priceName,
           },
         ]
       })
@@ -100,11 +132,16 @@ export function CartProvider({ children }: { children: ReactNode }) {
   const updateQuantity = useCallback((cartLineId: string, quantity: number) => {
     setItems((prev) =>
       prev
-        .map((i) =>
-          i.cartLineId === cartLineId
-            ? { ...i, quantity: Math.max(0, Math.min(quantity, i.maxStock)) }
-            : i
-        )
+        .map((i) => {
+          if (i.cartLineId !== cartLineId) return i
+          const moq = i.moq && i.moq > 0 ? i.moq : 1
+          const next = Math.max(0, Math.min(quantity, i.maxStock))
+          if (next > 0 && next < moq) {
+            window.alert(`"${i.priceName || i.name}" requires a minimum order of ${moq}.`)
+            return { ...i, quantity: moq }
+          }
+          return { ...i, quantity: next }
+        })
         .filter((i) => i.quantity > 0)
     )
   }, [])

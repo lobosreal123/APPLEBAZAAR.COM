@@ -3,6 +3,7 @@ import { collection, getDocs, query, where } from 'firebase/firestore'
 import { db } from '../firebase'
 import { getPosStoreConfigs, toCompositeId } from '../config'
 import { getImageUrls } from '../utils/productMapping'
+import { getActiveNamedPrices } from '../utils/namedPrices'
 import type { Product } from '../components/ProductCard'
 
 /** Map POS inventory doc to website Product. id can be doc id (single store) or composite ownerId|storeId|docId. */
@@ -10,11 +11,14 @@ function mapInventoryToProduct(id: string, data: Record<string, unknown>): Produ
   const imageUrls = getImageUrls(data)
   const color = ((data.color as string) || (data.colour as string) || '').trim() || undefined
   const storage = ((data.storage as string) || (data.storageCapacity as string) || '').trim() || undefined
+  const namedPrices = getActiveNamedPrices(data.namedPrices)
+  const basePrice = typeof data.price === 'number' ? data.price : Number(data.price) ?? 0
   return {
     id,
     name: ((data.name as string) || (data.model as string) || '').trim() || '',
     description: (data.description as string) ?? '',
-    price: typeof data.price === 'number' ? data.price : Number(data.price) ?? 0,
+    price: namedPrices[0]?.price > 0 ? namedPrices[0].price : basePrice,
+    namedPrices: namedPrices.length > 0 ? namedPrices : undefined,
     imageUrl: imageUrls[0] || undefined,
     imageUrls,
     stock: typeof data.stock === 'number' ? data.stock : Number(data.stock) ?? 0,

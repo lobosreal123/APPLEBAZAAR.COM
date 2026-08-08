@@ -16,6 +16,7 @@ type OrderItem = {
   quantity: number
   imageUrl?: string
   cashierNote?: string
+  priceName?: string
 }
 type OrderData = {
   orderNumber?: string
@@ -171,7 +172,8 @@ export default function ViewOrder() {
                 <div style={{ width: 48, height: 48, borderRadius: 6, background: 'var(--bg-subtle)', flexShrink: 0 }} aria-hidden />
               )}
               <span>
-                {item.name} × {item.quantity}
+                {item.name}
+                {item.priceName ? ` (${item.priceName})` : ''} × {item.quantity}
                 {item.cashierNote && (
                   <span className="order-cashier-note">
                     <span className="order-cashier-note-label">Note for cashier:</span> {item.cashierNote}

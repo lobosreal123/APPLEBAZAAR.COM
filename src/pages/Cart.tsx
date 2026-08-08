@@ -45,6 +45,12 @@ export default function Cart() {
                   )}
                   <div className="cart-item-name-cell">
                     <span>{item.name}</span>
+                    {item.priceName && (
+                      <span className="cart-price-option">
+                        Price: <strong>{item.priceName}</strong>
+                        {item.moq != null && item.moq > 0 ? ` · MOQ ${item.moq}` : ''}
+                      </span>
+                    )}
                     {item.cashierNote && (
                       <span className="cart-cashier-note">
                         <span className="cart-cashier-note-label">Note for cashier</span>
@@ -57,7 +63,7 @@ export default function Cart() {
                 <td style={{ textAlign: 'center' }}>
                   <input
                     type="number"
-                    min={1}
+                    min={item.moq && item.moq > 0 ? item.moq : 1}
                     max={item.maxStock}
                     value={item.quantity}
                     onChange={(e) => updateQuantity(item.cartLineId, parseInt(e.target.value, 10) || 0)}

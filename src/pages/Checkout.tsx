@@ -35,6 +35,7 @@ type CheckoutLine = {
   quantity: number
   imageUrl?: string
   cashierNote?: string
+  priceName?: string
 }
 
 function groupItemsByStore(
@@ -45,6 +46,7 @@ function groupItemsByStore(
     quantity: number
     imageUrl?: string
     cashierNote?: string
+    priceName?: string
   }[]
 ) {
   const configs = getPosStoreConfigs()
@@ -69,6 +71,7 @@ function groupItemsByStore(
       quantity: item.quantity,
       imageUrl: item.imageUrl,
       ...(item.cashierNote?.trim() && { cashierNote: item.cashierNote.trim() }),
+      ...(item.priceName?.trim() && { priceName: item.priceName.trim() }),
     }
     const lineTotal = item.price * item.quantity
     if (existing) {
@@ -144,6 +147,16 @@ export default function Checkout() {
     if (!user || items.length === 0) return
     setError('')
 
+    for (const line of items) {
+      const moq = line.moq && line.moq > 0 ? line.moq : 0
+      if (moq > 0 && line.quantity < moq) {
+        setError(
+          `"${line.name}"${line.priceName ? ` (${line.priceName})` : ''} requires a minimum of ${moq}. Cart has ${line.quantity}.`
+        )
+        return
+      }
+    }
+
     if (paymentMethod === 'Mobile Money') {
       const validation = validateMobileMoneyPayment()
       if (!validation.ok) {
@@ -216,6 +229,7 @@ export default function Checkout() {
             quantity: it.quantity,
             ...(it.imageUrl && { imageUrl: it.imageUrl }),
             ...(it.cashierNote && { cashierNote: it.cashierNote }),
+            ...(it.priceName && { priceName: it.priceName }),
           })),
           total: orderTotal,
           currency: CURRENCY,
@@ -510,7 +524,10 @@ export default function Checkout() {
           <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
             {items.map((i) => (
               <li key={i.cartLineId} style={{ padding: '0.35rem 0', borderBottom: '1px solid var(--border)' }}>
-                <div>{i.name} × {i.quantity} — {formatCedi(i.price * i.quantity)}</div>
+                <div>
+                  {i.name}
+                  {i.priceName ? ` (${i.priceName})` : ''} × {i.quantity} — {formatCedi(i.price * i.quantity)}
+                </div>
                 {i.cashierNote && (
                   <div className="checkout-cashier-note">
                     <span className="checkout-cashier-note-label">Note for cashier:</span> {i.cashierNote}

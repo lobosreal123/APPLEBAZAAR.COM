@@ -14,16 +14,20 @@ import ImageLightbox from '../components/ImageLightbox'
 import AddToCartPreferenceModal from '../components/AddToCartPreferenceModal'
 import FavoriteToggle from '../components/FavoriteToggle'
 import { getItemDisplayCategory } from '../utils/categoryFilter'
+import { getActiveNamedPrices } from '../utils/namedPrices'
 
 function mapInventoryToProduct(id: string, data: Record<string, unknown>): Product {
   const imageUrls = getImageUrls(data)
   const color = ((data.color as string) || (data.colour as string) || '').trim() || undefined
   const storage = ((data.storage as string) || (data.storageCapacity as string) || '').trim() || undefined
+  const namedPrices = getActiveNamedPrices(data.namedPrices)
+  const basePrice = typeof data.price === 'number' ? data.price : Number(data.price) ?? 0
   return {
     id,
     name: ((data.name as string) || (data.model as string) || '').trim() || '',
     description: (data.description as string) ?? '',
-    price: typeof data.price === 'number' ? data.price : Number(data.price) ?? 0,
+    price: namedPrices[0]?.price > 0 ? namedPrices[0].price : basePrice,
+    namedPrices: namedPrices.length > 0 ? namedPrices : undefined,
     imageUrl: imageUrls[0] || undefined,
     imageUrls,
     stock: typeof data.stock === 'number' ? data.stock : Number(data.stock) ?? 0,
@@ -54,6 +58,7 @@ export default function ProductDetail() {
   const [failedIndices, setFailedIndices] = useState<Set<number>>(new Set())
   const [lightboxOpen, setLightboxOpen] = useState(false)
   const [preferenceModalOpen, setPreferenceModalOpen] = useState(false)
+  const [selectedPriceName, setSelectedPriceName] = useState<string | null>(null)
   const [storeNames, setStoreNames] = useState<string[]>([])
   const { addItem } = useCart()
   const { playFlyToCart } = useCartFly()
@@ -61,6 +66,22 @@ export default function ProductDetail() {
   const navigate = useNavigate()
   const location = useLocation()
   const storeLocationsFromState = (location.state as { storeLocations?: { ownerId: string; storeId: string }[] })?.storeLocations
+
+  const priceOptions = product?.namedPrices ?? []
+  const selectedTier = priceOptions.find((t) => t.name === selectedPriceName) ?? priceOptions[0]
+  const unitPrice = selectedTier?.price ?? product?.price ?? 0
+
+  useEffect(() => {
+    if (!product) return
+    const tiers = product.namedPrices ?? []
+    if (tiers.length === 0) {
+      setSelectedPriceName(null)
+      return
+    }
+    setSelectedPriceName((prev) =>
+      prev && tiers.some((t) => t.name === prev) ? prev : tiers[0].name
+    )
+  }, [product?.id, product?.namedPrices])
 
   const similarItems = useMemo(() => {
     if (!product || !products.length) return []
@@ -234,14 +255,23 @@ export default function ProductDetail() {
 
   const handlePreferenceConfirm = (cashierNote: string | null) => {
     if (!product || !inStock) return
+    const moq = selectedTier?.moq && selectedTier.moq > 0 ? selectedTier.moq : 1
+    if (moq > product.stock) {
+      window.alert(
+        `"${selectedTier?.name ?? 'This price'}" requires a minimum of ${moq}, but only ${product.stock} are in stock.`
+      )
+      return
+    }
     playFlyToCart(flySourceRef.current, getProductImageUrl(product))
     addItem({
       productId: product.id,
       name: product.name,
-      price: product.price,
+      price: unitPrice,
+      priceName: selectedTier?.name,
+      moq: selectedTier?.moq,
       imageUrl: getProductImageUrl(product),
       maxStock: product.stock,
-      quantity: 1,
+      quantity: moq,
       cashierNote: cashierNote ?? undefined,
     })
     setPreferenceModalOpen(false)
@@ -358,7 +388,35 @@ export default function ProductDetail() {
             {[product.color, product.storage].filter(Boolean).join(' · ')}
           </p>
         )}
-        <p className="product-detail-price">{formatCedi(product.price)}</p>
+        {priceOptions.length > 0 ? (
+          <div className="product-detail-price-options" role="radiogroup" aria-label="Price options">
+            <p className="product-detail-price-options-label">Price options</p>
+            {priceOptions.map((tier) => {
+              const selected = (selectedPriceName ?? priceOptions[0]?.name) === tier.name
+              return (
+                <label
+                  key={tier.name}
+                  className={`product-detail-price-option ${selected ? 'selected' : ''}`}
+                >
+                  <input
+                    type="radio"
+                    name="price-option"
+                    value={tier.name}
+                    checked={selected}
+                    onChange={() => setSelectedPriceName(tier.name)}
+                  />
+                  <span className="product-detail-price-option-name">{tier.name}</span>
+                  <span className="product-detail-price-option-value">{formatCedi(tier.price)}</span>
+                  {tier.moq != null && tier.moq > 0 && (
+                    <span className="product-detail-price-option-moq">MOQ {tier.moq}</span>
+                  )}
+                </label>
+              )
+            })}
+          </div>
+        ) : (
+          <p className="product-detail-price">{formatCedi(product.price)}</p>
+        )}
         {product.description && <p className="product-detail-desc">{product.description}</p>}
         <p className="product-detail-stock">
           {inStock ? (
@@ -373,7 +431,11 @@ export default function ProductDetail() {
           onClick={handleAddToCartClick}
           disabled={!inStock}
         >
-          {inStock ? 'Add to cart' : 'Out of stock'}
+          {inStock
+            ? selectedTier?.moq && selectedTier.moq > 1
+              ? `Add ${selectedTier.moq}+ to cart`
+              : 'Add to cart'
+            : 'Out of stock'}
         </button>
       </div>
 
@@ -422,7 +484,11 @@ export default function ProductDetail() {
                   <span className="product-detail-similar-name" title={p.name}>
                     {p.name}
                   </span>
-                  <span className="product-detail-similar-price">{formatCedi(p.price)}</span>
+                  <span className="product-detail-similar-price">
+                    {p.namedPrices && p.namedPrices.length > 0
+                      ? p.namedPrices.map((t) => `${t.name} ${formatCedi(t.price)}`).join(' · ')
+                      : formatCedi(p.price)}
+                  </span>
                 </Link>
               )
             })}

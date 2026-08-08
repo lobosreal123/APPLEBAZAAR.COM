@@ -226,7 +226,7 @@ type TelegramOrderArgs = {
   customerPhone?: string
   customerEmail?: string
   customerAddress?: string
-  items: { name: string; quantity: number; price: number; cashierNote?: string }[]
+  items: { name: string; quantity: number; price: number; cashierNote?: string; priceName?: string }[]
   total: number
   currency: string
   paymentMethod: 'Mobile Money' | 'Cash'
@@ -265,8 +265,9 @@ export function buildTelegramOrderNotification(args: TelegramOrderArgs): string 
 
   lines.push('', '📦 Items')
   for (const it of args.items) {
+    const label = it.priceName ? `${it.name} (${it.priceName})` : it.name
     lines.push(
-      `• ${it.name} × ${it.quantity} — ${formatTelegramItemTotal(it.price * it.quantity)}`
+      `• ${label} × ${it.quantity} — ${formatTelegramItemTotal(it.price * it.quantity)}`
     )
   }
 

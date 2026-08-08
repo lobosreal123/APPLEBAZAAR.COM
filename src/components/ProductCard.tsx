@@ -2,6 +2,8 @@ import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { formatCedi } from '../utils/currency'
 import { isValidImageUrl } from '../utils/productMapping'
+import type { NamedPrice } from '../utils/namedPrices'
+import { getDisplayPrice } from '../utils/namedPrices'
 import FavoriteToggle from './FavoriteToggle'
 
 const STORAGE_KEY = 'applebazaar_category'
@@ -12,6 +14,8 @@ export type Product = {
   name: string
   description: string
   price: number
+  /** POS named price tiers (Retail / Wholesale / etc.). */
+  namedPrices?: NamedPrice[]
   /** First image URL (for cart, list). Same as imageUrls[0] when multiple images exist. */
   imageUrl?: string
   /** All image URLs for this item. Use imageUrls[0] or imageUrl for card/cart. */
@@ -93,7 +97,21 @@ export default function ProductCard({ product, persistPosition }: ProductCardPro
             {[product.color, product.storage].filter(Boolean).join(' · ')}
           </p>
         )}
-        <p className="product-card-price">{formatCedi(product.price)}</p>
+        {product.namedPrices && product.namedPrices.length > 0 ? (
+          <ul className="product-card-price-options" aria-label="Price options">
+            {product.namedPrices.map((tier) => (
+              <li key={tier.name}>
+                <span className="product-card-price-option-name">{tier.name}</span>
+                <span className="product-card-price-option-value">{formatCedi(tier.price)}</span>
+                {tier.moq != null && tier.moq > 0 && (
+                  <span className="product-card-price-option-moq">MOQ {tier.moq}</span>
+                )}
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="product-card-price">{formatCedi(getDisplayPrice(product.price, product.namedPrices))}</p>
+        )}
         <p className={`product-card-meta ${inStock ? '' : 'out'}`}>
           {inStock ? 'In stock' : 'Out of stock'}
         </p>
