@@ -759,7 +759,7 @@ textarea {
 }
 
 .shop-sidebar-btn-sub {
-  font-family: 'Nunito', var(--sans);
+  font-family: var(--sans);
   font-size: 0.8rem;
   font-weight: 600;
   color: #ea580c;
@@ -867,7 +867,7 @@ textarea {
 }
 
 .tab-button-sub {
-  font-family: 'Nunito', var(--sans);
+  font-family: var(--sans);
   font-size: 0.75rem;
   font-weight: 600;
   letter-spacing: 0.02em;
@@ -962,7 +962,7 @@ textarea {
 
 /* Hot items title - flame style like hot-item-text-vector-with-flame-sign */
 .hot-items-title {
-  font-family: 'Fira Sans', var(--sans);
+  font-family: var(--sans);
   font-weight: 700;
   display: flex;
   align-items: center;

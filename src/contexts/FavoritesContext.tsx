@@ -61,7 +61,8 @@ export function FavoritesProvider({ children }: { children: ReactNode }) {
     }
 
     let cancelled = false
-    setLoading(true)
+    // Keep local favorites immediately; sync cloud after idle so it does not compete with inventory.
+    setLoading(false)
 
     const load = async () => {
       try {
@@ -87,14 +88,27 @@ export function FavoritesProvider({ children }: { children: ReactNode }) {
         }
       } catch {
         if (!cancelled) setFavoriteIds(new Set(readLocalFavorites()))
-      } finally {
-        if (!cancelled) setLoading(false)
       }
     }
 
-    void load()
+    let idleId: number | undefined
+    let timeoutId: ReturnType<typeof setTimeout> | undefined
+    if (typeof window !== 'undefined' && 'requestIdleCallback' in window) {
+      idleId = window.requestIdleCallback(() => {
+        void load()
+      }, { timeout: 3000 })
+    } else {
+      timeoutId = setTimeout(() => {
+        void load()
+      }, 1500)
+    }
+
     return () => {
       cancelled = true
+      if (idleId != null && 'cancelIdleCallback' in window) {
+        window.cancelIdleCallback(idleId)
+      }
+      if (timeoutId != null) clearTimeout(timeoutId)
     }
   }, [user?.uid])
 

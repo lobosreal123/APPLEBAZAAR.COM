@@ -5,6 +5,18 @@ export default defineConfig({
   plugins: [react()],
   server: {
     open: true,
-    host: true,  // Expose on network so you can test on mobile (shows Network URL)
+    host: true,
+  },
+  build: {
+    target: 'es2020',
+    cssCodeSplit: true,
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          react: ['react', 'react-dom', 'react-router-dom'],
+          firebase: ['firebase/app', 'firebase/auth', 'firebase/firestore'],
+        },
+      },
+    },
   },
 })

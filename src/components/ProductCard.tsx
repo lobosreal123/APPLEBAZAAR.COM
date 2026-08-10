@@ -78,9 +78,8 @@ export default function ProductCard({ product, persistPosition }: ProductCardPro
           <img
             src={src}
             alt={product.name || 'Product'}
-            onLoad={() => {
-              if (import.meta.env.DEV) console.log('[ProductCard] Image loaded:', product.id)
-            }}
+            loading="lazy"
+            decoding="async"
             onError={() => {
               if (import.meta.env.DEV) console.warn('[ProductCard] Image failed to load:', product.id, src)
               setImgError(true)

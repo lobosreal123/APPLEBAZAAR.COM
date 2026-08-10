@@ -1,7 +1,10 @@
 import { initializeApp } from 'firebase/app'
 import { getAuth } from 'firebase/auth'
-import { getFirestore } from 'firebase/firestore'
-import { getStorage } from 'firebase/storage'
+import {
+  initializeFirestore,
+  persistentLocalCache,
+  persistentMultipleTabManager,
+} from 'firebase/firestore'
 
 const apiKey = (import.meta.env.VITE_FIREBASE_API_KEY as string)?.trim()
 if (!apiKey || apiKey === 'your-api-key') {
@@ -21,5 +24,8 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig)
 export const auth = getAuth(app)
-export const db = getFirestore(app)
-export const storage = getStorage(app)
+
+/** Same pattern as POS: IndexedDB cache so repeat visits paint instantly, then sync. */
+export const db = initializeFirestore(app, {
+  localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() }),
+})
