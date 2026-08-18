@@ -5,6 +5,7 @@ import { useCart } from '../contexts/CartContext'
 import { useCartFly, HEADER_CART_ID } from '../contexts/CartFlyContext'
 import { ShopCategoryProvider } from '../contexts/ShopCategoryContext'
 import { ShopCategoryToggle, ShopCategoryDrawer } from './ShopCategoryPanel'
+import FreeImeiCheck from './FreeImeiCheck'
 import { useAdmin } from '../hooks/useAdmin'
 import { useFavorites } from '../contexts/FavoritesContext'
 import type { ReactNode } from 'react'
@@ -126,6 +127,9 @@ export default function Layout({ children }: { children: ReactNode }) {
                 onChange={(e) => setSearchInput(e.target.value)}
               />
             </form>
+            <div className="app-header-free-check">
+              <FreeImeiCheck />
+            </div>
           </div>
           <nav className="app-nav" aria-label="Account and cart">
             {favoritesCount > 0 && (

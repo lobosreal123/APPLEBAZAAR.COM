@@ -111,6 +111,12 @@ export default function Home() {
   return (
     <div className="home-layout">
       <div className="home-main">
+        {!favoritesOnly && (
+          <div className="shop-atmosphere" aria-hidden="true">
+            <span className="shop-atmosphere-orb shop-atmosphere-orb-a" />
+            <span className="shop-atmosphere-orb shop-atmosphere-orb-b" />
+          </div>
+        )}
         {activeTab === 'all' && !favoritesOnly && hotItems.length > 0 && (
           <section className="home-hot-section">
             <h2 className="section-title hot-items-title">

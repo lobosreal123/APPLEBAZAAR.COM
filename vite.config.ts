@@ -6,6 +6,13 @@ export default defineConfig({
   server: {
     open: true,
     host: true,
+    proxy: {
+      '/api/sickw': {
+        target: 'https://sickw.com',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/api\/sickw/, '/api.php'),
+      },
+    },
   },
   build: {
     target: 'es2020',

@@ -12,9 +12,10 @@ import { getImageUrls, isValidImageUrl } from '../utils/productMapping'
 import { formatCedi } from '../utils/currency'
 import ImageLightbox from '../components/ImageLightbox'
 import AddToCartPreferenceModal from '../components/AddToCartPreferenceModal'
+import PriceOptionsModal from '../components/PriceOptionsModal'
 import FavoriteToggle from '../components/FavoriteToggle'
 import { getItemDisplayCategory } from '../utils/categoryFilter'
-import { getActiveNamedPrices } from '../utils/namedPrices'
+import { getActiveNamedPrices, type NamedPrice } from '../utils/namedPrices'
 
 function mapInventoryToProduct(id: string, data: Record<string, unknown>): Product {
   const imageUrls = getImageUrls(data)
@@ -58,6 +59,8 @@ export default function ProductDetail() {
   const [failedIndices, setFailedIndices] = useState<Set<number>>(new Set())
   const [lightboxOpen, setLightboxOpen] = useState(false)
   const [preferenceModalOpen, setPreferenceModalOpen] = useState(false)
+  const [priceModalOpen, setPriceModalOpen] = useState(false)
+  const [priceModalForCart, setPriceModalForCart] = useState(false)
   const [selectedPriceName, setSelectedPriceName] = useState<string | null>(null)
   const [storeNames, setStoreNames] = useState<string[]>([])
   const { addItem } = useCart()
@@ -65,11 +68,14 @@ export default function ProductDetail() {
   const flySourceRef = useRef<HTMLDivElement>(null)
   const navigate = useNavigate()
   const location = useLocation()
-  const storeLocationsFromState = (location.state as { storeLocations?: { ownerId: string; storeId: string }[] })?.storeLocations
+  const locationState = location.state as {
+    storeLocations?: { ownerId: string; storeId: string }[]
+    selectedPriceName?: string
+  } | null
+  const storeLocationsFromState = locationState?.storeLocations
 
   const priceOptions = product?.namedPrices ?? []
   const selectedTier = priceOptions.find((t) => t.name === selectedPriceName) ?? priceOptions[0]
-  const unitPrice = selectedTier?.price ?? product?.price ?? 0
 
   useEffect(() => {
     if (!product) return
@@ -78,10 +84,20 @@ export default function ProductDetail() {
       setSelectedPriceName(null)
       return
     }
-    setSelectedPriceName((prev) =>
-      prev && tiers.some((t) => t.name === prev) ? prev : tiers[0].name
-    )
-  }, [product?.id, product?.namedPrices])
+    let preferred = locationState?.selectedPriceName
+    if (!preferred) {
+      try {
+        preferred = sessionStorage.getItem(`applebazaar_price_${product.id}`) || undefined
+      } catch {
+        /* ignore */
+      }
+    }
+    setSelectedPriceName((prev) => {
+      if (preferred && tiers.some((t) => t.name === preferred)) return preferred
+      if (prev && tiers.some((t) => t.name === prev)) return prev
+      return tiers[0].name
+    })
+  }, [product?.id, product?.namedPrices, locationState?.selectedPriceName])
 
   const similarItems = useMemo(() => {
     if (!product || !products.length) return []
@@ -248,17 +264,41 @@ export default function ProductDetail() {
 
   const inStock = product.stock >= 1
 
+  const openPricePicker = (forCart: boolean) => {
+    setPriceModalForCart(forCart)
+    setPriceModalOpen(true)
+  }
+
   const handleAddToCartClick = () => {
     if (!inStock) return
+    if (priceOptions.length > 0) {
+      openPricePicker(true)
+      return
+    }
     setPreferenceModalOpen(true)
+  }
+
+  const handlePriceConfirm = (option: NamedPrice) => {
+    setSelectedPriceName(option.name)
+    try {
+      sessionStorage.setItem(`applebazaar_price_${product.id}`, option.name)
+    } catch {
+      /* ignore */
+    }
+    setPriceModalOpen(false)
+    if (priceModalForCart && inStock) setPreferenceModalOpen(true)
+    setPriceModalForCart(false)
   }
 
   const handlePreferenceConfirm = (cashierNote: string | null) => {
     if (!product || !inStock) return
-    const moq = selectedTier?.moq && selectedTier.moq > 0 ? selectedTier.moq : 1
+    const tier =
+      priceOptions.find((t) => t.name === selectedPriceName) ?? selectedTier ?? null
+    const price = tier?.price ?? product.price
+    const moq = tier?.moq && tier.moq > 0 ? tier.moq : 1
     if (moq > product.stock) {
       window.alert(
-        `"${selectedTier?.name ?? 'This price'}" requires a minimum of ${moq}, but only ${product.stock} are in stock.`
+        `"${tier?.name ?? 'This price'}" requires a minimum of ${moq}, but only ${product.stock} are in stock.`
       )
       return
     }
@@ -266,9 +306,9 @@ export default function ProductDetail() {
     addItem({
       productId: product.id,
       name: product.name,
-      price: unitPrice,
-      priceName: selectedTier?.name,
-      moq: selectedTier?.moq,
+      price,
+      priceName: tier?.name,
+      moq: tier?.moq,
       imageUrl: getProductImageUrl(product),
       maxStock: product.stock,
       quantity: moq,
@@ -389,28 +429,35 @@ export default function ProductDetail() {
           </p>
         )}
         {priceOptions.length > 0 ? (
-          <div className="product-detail-price-options" role="radiogroup" aria-label="Price options">
-            <p className="product-detail-price-options-label">Price options</p>
-            {priceOptions.map((tier) => {
+          <div className="product-detail-price-panels" role="radiogroup" aria-label="Price options">
+            <p className="product-detail-price-panels-label">Available prices</p>
+            {priceOptions.map((tier, index) => {
               const selected = (selectedPriceName ?? priceOptions[0]?.name) === tier.name
               return (
-                <label
-                  key={tier.name}
-                  className={`product-detail-price-option ${selected ? 'selected' : ''}`}
-                >
-                  <input
-                    type="radio"
-                    name="price-option"
-                    value={tier.name}
-                    checked={selected}
-                    onChange={() => setSelectedPriceName(tier.name)}
-                  />
-                  <span className="product-detail-price-option-name">{tier.name}</span>
-                  <span className="product-detail-price-option-value">{formatCedi(tier.price)}</span>
-                  {tier.moq != null && tier.moq > 0 && (
-                    <span className="product-detail-price-option-moq">MOQ {tier.moq}</span>
-                  )}
-                </label>
+                <div key={tier.name} className="product-detail-price-panel-wrap">
+                  {index > 0 && <div className="product-detail-price-separator" aria-hidden />}
+                  <button
+                    type="button"
+                    role="radio"
+                    aria-checked={selected}
+                    className={`product-detail-price-panel ${selected ? 'selected' : ''}`}
+                    onClick={() => {
+                      setSelectedPriceName(tier.name)
+                      try {
+                        sessionStorage.setItem(`applebazaar_price_${product.id}`, tier.name)
+                      } catch {
+                        /* ignore */
+                      }
+                    }}
+                  >
+                    <span className="product-detail-price-panel-name">
+                      {tier.name}
+                      {selected ? ' · Selected' : ''}
+                      {tier.moq != null && tier.moq > 0 ? ` · MOQ ${tier.moq}` : ''}
+                    </span>
+                    <span className="product-detail-price-panel-value">{formatCedi(tier.price)}</span>
+                  </button>
+                </div>
               )
             })}
           </div>
@@ -427,7 +474,7 @@ export default function ProductDetail() {
         </p>
         <button
           type="button"
-          className="btn-primary"
+          className="btn-primary btn-add-cart"
           onClick={handleAddToCartClick}
           disabled={!inStock}
         >
@@ -438,6 +485,19 @@ export default function ProductDetail() {
             : 'Out of stock'}
         </button>
       </div>
+
+      <PriceOptionsModal
+        open={priceModalOpen}
+        productName={product.name || 'Product'}
+        options={priceOptions}
+        selectedName={selectedPriceName}
+        confirmLabel={priceModalForCart ? 'Continue to cart' : 'Use this price'}
+        onConfirm={handlePriceConfirm}
+        onClose={() => {
+          setPriceModalOpen(false)
+          setPriceModalForCart(false)
+        }}
+      />
 
       <AddToCartPreferenceModal
         open={preferenceModalOpen}
